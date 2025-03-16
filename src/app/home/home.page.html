@@ -1,20 +1,116 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Blank
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content>
+  <div class="main">
+    <h1 class="myloc">My Location</h1>
+    <p class="city">CEBU</p>
+    <h1 class="temperature">31°</h1>
+    <h5 class="description">Cloudy</h5>
+    <div class="pressure">
+      <span class="high">H:24°</span>
+      <span class="low"> L:23°</span>
+    </div>
+  </div>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+  <ion-card class="hourly">
+    <p class="hourly-title">HOURLY FORECAST</p>
+   <hr>
+  <ion-grid class="hourly-grid hours">
+    <ion-row>
+      <ion-col>
+      <ion-card class="hour-card">
+        <ion-col class="hour">12 AM</ion-col>
+        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
+        <ion-col class="hour-temp">31°</ion-col>
+      </ion-card>
+    </ion-col>
+    <ion-col>
+      <ion-card class="hour-card">
+        <ion-col class="hour">1 AM</ion-col>
+        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
+        <ion-col class="hour-temp">31°</ion-col>
+      </ion-card>
+    </ion-col>
+    <ion-col>
+      <ion-card class="hour-card">
+        <ion-col class="hour">2 AM</ion-col>
+        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
+        <ion-col class="hour-temp">31°</ion-col>
+      </ion-card>
+    </ion-col>
+    <ion-col>
+      <ion-card class="hour-card">
+        <ion-col class="hour">3 AM</ion-col>
+        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
+        <ion-col class="hour-temp">31°</ion-col>
+      </ion-card>
+    </ion-col>
+    <ion-col>
+      <ion-card class="hour-card">
+        <ion-col class="hour">4 AM</ion-col>
+        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
+        <ion-col class="hour-temp">31°</ion-col>
+      </ion-card>
+    </ion-col>
+    </ion-row>
+  </ion-grid>
+  </ion-card>
+
+  <ion-card class="weekly-list">
+    <p class="weekly-title">5-DAY FORECAST</p>
+    <hr>
+    <ion-grid class="weeekly-grid">
+      <ion-row class="weekly">MON<span>moon</span> <span>31°</span></ion-row>
+      <hr>
+      <ion-row class="weekly">TUE<span>moon</span> <span>31°</span></ion-row>
+      <hr>
+      <ion-row class="weekly">WED<span>moon</span> <span>31°</span></ion-row>
+      <hr>
+      <ion-row class="weekly">THUR<span>moon</span> <span>31°</span></ion-row>
+      <hr>
+      <ion-row class="weekly">FRI<span>moon</span> <span>31°</span></ion-row>
+    </ion-grid>
+  </ion-card>
+
+  <div class="weather-container">
+    <!-- Temperature Card -->
+    <ion-card class="weather-card temperature-card">
+      <ion-card-content>
+        <div class="header">
+          <ion-icon name="thermometer-outline" class="condition-icon"></ion-icon>
+          <span>FEELS LIKE</span>
+        </div>
+        <div class="value">19°</div>
+        <div class="desc-condition">Similar to the actual temperature.</div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Humidity Card -->
+    <ion-card class="weather-card humidity-card">
+      <ion-card-content>
+        <div class="header">
+          <ion-icon name="water-outline" class="condition-icon"></ion-icon>
+          <span>HUMIDITY</span>
+        </div>
+        <div class="value">90%</div>
+        <div class="desc-condition">The dew point is 17 right now.</div>
+      </ion-card-content>
+    </ion-card>
   </div>
 </ion-content>
+
+  <!-- Tab bar
+<ion-tabs>
+
+  <ion-tab-bar slot="bottom">
+    <ion-tab-button tab="home">
+      <ion-icon name="location-outline"></ion-icon>
+    </ion-tab-button>
+    <ion-tab-button tab="addLocation">
+      <ion-icon name="add"></ion-icon>
+    </ion-tab-button>
+    <ion-tab-button tab="settings">
+      <ion-icon name="settings"></ion-icon>
+    </ion-tab-button>
+  </ion-tab-bar>
+</ion-tabs>
+ -->
