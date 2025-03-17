@@ -10,22 +10,8 @@ import { WeatherService } from '../services/weather.service';
 export class HomePage implements OnInit {
   weatherData: any;
 
-  constructor(private weatherService: WeatherService) {}
+  constructor() {}
 
   ngOnInit() {
-    // Fetch weather data for a specific city (e.g., London)
-    this.getWeather('Cebu City');
-  }
-
-  getWeather(city: string) {
-    this.weatherService.getWeatherByCity(city).subscribe(
-      (data) => {
-        this.weatherData = data;
-        console.log(this.weatherData); // You can remove this line, just to see the data structure
-      },
-      (error) => {
-        console.error(error);
-      }
-    );
   }
 }

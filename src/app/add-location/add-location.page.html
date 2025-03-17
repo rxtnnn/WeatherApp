@@ -1,0 +1,67 @@
+<ion-content>
+  <ion-tabs>
+    <ion-tab tab="add-location">
+      <div class="ion-padding">
+        <!-- Header -->
+        <div class="header">
+          <ion-buttons slot="start">
+            <ion-back-button text="Weather" default-href="#"></ion-back-button>
+          </ion-buttons>
+        </div>
+
+        <!-- Search bar -->
+        <ion-searchbar placeholder="Search for a city or airport" class="custom-searchbar"></ion-searchbar>
+
+        <!-- Weather location cards -->
+        <div class="weather-cards">
+          <!-- My Location Card -->
+          <ion-card class="location-card">
+            <ion-card-content>
+              <div class="location-info">
+                <div class="location-name">
+                  <h2>My Location</h2>
+                  <p>Cebu</p>
+                </div>
+                <div class="temperature">
+                  <span class="temp-value">31°</span>
+                </div>
+              </div>
+              <div class="high-low">
+                <span>H: 31° L: 25°</span>
+              </div>
+            </ion-card-content>
+          </ion-card>
+
+          <!-- Tokyo Card -->
+          <ion-card class="location-card">
+            <ion-card-content>
+              <div class="location-info">
+                <div class="location-name">
+                  <h2>Tokyo</h2>
+                </div>
+                <div class="temperature">
+                  <span class="temp-value">21°</span>
+                </div>
+              </div>
+              <div class="high-low">
+                <span>H: 31° L: 25°</span>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </div>
+    </ion-tab>
+  <!-- Bottom tab bar -->
+    <ion-tab-bar slot="bottom">
+      <ion-tab-button tab="home" [routerLink]="['/home']">
+        <ion-icon name="location-outline"></ion-icon>
+      </ion-tab-button>
+      <ion-tab-button tab="add-location" [routerLink]="['/add-location']">
+        <ion-icon name="add-circle-outline"></ion-icon>
+      </ion-tab-button>
+      <ion-tab-button tab="settings" [routerLink]="['/settings']">
+        <ion-icon name="settings"></ion-icon>
+      </ion-tab-button>
+    </ion-tab-bar>
+  </ion-tabs>
+</ion-content>

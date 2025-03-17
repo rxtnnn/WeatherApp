@@ -1,116 +1,147 @@
-
 <ion-content>
-  <div class="main">
-    <h1 class="myloc">My Location</h1>
-    <p class="city">CEBU</p>
-    <h1 class="temperature">31°</h1>
-    <h5 class="description">Cloudy</h5>
-    <div class="pressure">
-      <span class="high">H:24°</span>
-      <span class="low"> L:23°</span>
+  <ion-tabs>
+    <!-- Tab for Home -->
+    <ion-tab tab="home">
+      <div class="home-container">
+        <div class="weather-location-container">
+          <div class="location-header">
+            <h1 class="location-name">My Location</h1>
+            <p class="location-city">CEBU</p>
+          </div>
+
+          <div class="temperature-display">
+            <span class="temperature-value">19°</span>
+          </div>
+
+          <div class="weather-condition">
+            <p>Mostly Clear</p>
+          </div>
+
+          <div class="temperature-range">
+            <span class="high-temp">H:24°</span>
+            <span class="low-temp">L:18°</span>
+          </div>
+        </div>
+
+      <ion-card class="hourly-list">
+        <ion-card-header>
+          <div class="header-container">
+            <ion-card-title>TODAY</ion-card-title>
+            <ion-card-subtitle>Mar, 10</ion-card-subtitle>
+          </div>
+        </ion-card-header>
+
+        <ion-card-content>
+          <hr>
+          <div class="scroll-container">
+            <div class="forecast-container">
+              <!-- 12 AM -->
+              <ion-card class="forecast-item">
+                <div class="time">12 AM</div>
+                <div class="weather-icon">
+                  <ion-icon name="rainy"></ion-icon>
+                  <div class="precipitation">30%</div>
+                </div>
+                <div class="temperature">25°</div>
+              </ion-card>
+
+              <ion-card class="forecast-item active">
+                <div class="time">1 AM</div>
+                <div class="weather-icon">
+                  <ion-icon name="partly-sunny"></ion-icon>
+                  <div class="precipitation">30%</div>
+                </div>
+                <div class="temperature">25°</div>
+              </ion-card>
+            </div>
+          </div>
+        </ion-card-content>
+      </ion-card>
+
+      <ion-card class="weekly-list">
+        <p class="weekly-title">5-DAY FORECAST</p>
+        <hr>
+        <ion-grid class="weeekly-grid">
+          <ion-row class="weekly">MON<span>moon</span> <span>31°</span></ion-row>
+          <hr>
+          <ion-row class="weekly">TUE<span>moon</span> <span>31°</span></ion-row>
+          <hr>
+          <ion-row class="weekly">WED<span>moon</span> <span>31°</span></ion-row>
+          <hr>
+          <ion-row class="weekly">THUR<span>moon</span> <span>31°</span></ion-row>
+          <hr>
+          <ion-row class="weekly">FRI<span>moon</span> <span>31°</span></ion-row>
+        </ion-grid>
+      </ion-card>
+
+      <div class="weather-container">
+        <ion-grid class="weather-grid">
+          <ion-row>
+            <ion-col>
+              <ion-card class="weather-card temperature-card">
+                <ion-card-content>
+                  <div class="header">
+                    <ion-icon name="thermometer-outline" class="condition-icon"></ion-icon>
+                    <span>FEELS LIKE</span>
+                  </div>
+                  <div class="value">19°</div>
+                  <div class="desc-condition">Similar to the actual temperature.</div>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+            <ion-col>
+              <ion-card class="weather-card humidity-card">
+                <ion-card-content>
+                  <div class="header">
+                    <ion-icon name="water-outline" class="condition-icon"></ion-icon>
+                    <span>HUMIDITY</span>
+                  </div>
+                  <div class="value">90%</div>
+                  <div class="desc-condition">The dew point is 17 right now.</div>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+            <ion-col>
+              <ion-card class="weather-card precip-card">
+                <ion-card-content>
+                  <div class="header">
+                    <ion-icon name="WATER-outline" class="condition-icon"></ion-icon>
+                    <span>PRECIPITATION</span>
+                  </div>
+                  <div class="value">90%</div>
+                  <div class="desc-condition">7mm expected in the next 24hrs</div>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+            <ion-col>
+              <ion-card class="weather-card wind-card">
+                <ion-card-content>
+                  <div class="header">
+                    <ion-icon name="speedometer-outline" class="condition-icon"></ion-icon>
+                    <span>WIND SPEED</span>
+                  </div>
+                  <div class="value">90%</div>
+                  <div class="desc-condition">7mm expected in the next 24hrs</div>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+      </ion-row>
+      </ion-grid>
+      </div>
     </div>
-  </div>
+    </ion-tab>
 
-  <ion-card class="hourly">
-    <p class="hourly-title">HOURLY FORECAST</p>
-   <hr>
-  <ion-grid class="hourly-grid hours">
-    <ion-row>
-      <ion-col>
-      <ion-card class="hour-card">
-        <ion-col class="hour">12 AM</ion-col>
-        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
-        <ion-col class="hour-temp">31°</ion-col>
-      </ion-card>
-    </ion-col>
-    <ion-col>
-      <ion-card class="hour-card">
-        <ion-col class="hour">1 AM</ion-col>
-        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
-        <ion-col class="hour-temp">31°</ion-col>
-      </ion-card>
-    </ion-col>
-    <ion-col>
-      <ion-card class="hour-card">
-        <ion-col class="hour">2 AM</ion-col>
-        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
-        <ion-col class="hour-temp">31°</ion-col>
-      </ion-card>
-    </ion-col>
-    <ion-col>
-      <ion-card class="hour-card">
-        <ion-col class="hour">3 AM</ion-col>
-        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
-        <ion-col class="hour-temp">31°</ion-col>
-      </ion-card>
-    </ion-col>
-    <ion-col>
-      <ion-card class="hour-card">
-        <ion-col class="hour">4 AM</ion-col>
-        <ion-icon name="rainy-outline" class="weather-icon"></ion-icon>
-        <ion-col class="hour-temp">31°</ion-col>
-      </ion-card>
-    </ion-col>
-    </ion-row>
-  </ion-grid>
-  </ion-card>
-
-  <ion-card class="weekly-list">
-    <p class="weekly-title">5-DAY FORECAST</p>
-    <hr>
-    <ion-grid class="weeekly-grid">
-      <ion-row class="weekly">MON<span>moon</span> <span>31°</span></ion-row>
-      <hr>
-      <ion-row class="weekly">TUE<span>moon</span> <span>31°</span></ion-row>
-      <hr>
-      <ion-row class="weekly">WED<span>moon</span> <span>31°</span></ion-row>
-      <hr>
-      <ion-row class="weekly">THUR<span>moon</span> <span>31°</span></ion-row>
-      <hr>
-      <ion-row class="weekly">FRI<span>moon</span> <span>31°</span></ion-row>
-    </ion-grid>
-  </ion-card>
-
-  <div class="weather-container">
-    <!-- Temperature Card -->
-    <ion-card class="weather-card temperature-card">
-      <ion-card-content>
-        <div class="header">
-          <ion-icon name="thermometer-outline" class="condition-icon"></ion-icon>
-          <span>FEELS LIKE</span>
-        </div>
-        <div class="value">19°</div>
-        <div class="desc-condition">Similar to the actual temperature.</div>
-      </ion-card-content>
-    </ion-card>
-
-    <!-- Humidity Card -->
-    <ion-card class="weather-card humidity-card">
-      <ion-card-content>
-        <div class="header">
-          <ion-icon name="water-outline" class="condition-icon"></ion-icon>
-          <span>HUMIDITY</span>
-        </div>
-        <div class="value">90%</div>
-        <div class="desc-condition">The dew point is 17 right now.</div>
-      </ion-card-content>
-    </ion-card>
-  </div>
+    <!-- Tab Bar -->
+    <ion-tab-bar slot="bottom">
+      <ion-tab-button tab="home" [routerLink]="['/home']">
+        <ion-icon name="location-outline"></ion-icon>
+      </ion-tab-button>
+      <ion-tab-button tab="add-location" [routerLink]="['/add-location']">
+        <ion-icon name="add-circle-outline"></ion-icon>
+      </ion-tab-button>
+      <ion-tab-button tab="settings" [routerLink]="['/settings']">
+        <ion-icon name="settings"></ion-icon>
+      </ion-tab-button>
+    </ion-tab-bar>
+  </ion-tabs>
 </ion-content>
-
-  <!-- Tab bar
-<ion-tabs>
-
-  <ion-tab-bar slot="bottom">
-    <ion-tab-button tab="home">
-      <ion-icon name="location-outline"></ion-icon>
-    </ion-tab-button>
-    <ion-tab-button tab="addLocation">
-      <ion-icon name="add"></ion-icon>
-    </ion-tab-button>
-    <ion-tab-button tab="settings">
-      <ion-icon name="settings"></ion-icon>
-    </ion-tab-button>
-  </ion-tab-bar>
-</ion-tabs>
- -->

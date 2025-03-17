@@ -1,0 +1,99 @@
+*{
+  color: black;
+  background-color: white;
+}
+.settings-page {
+  --background: white;
+}
+
+.header {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+ion-back-button {
+  --color: black;
+  --icon-font-size: 24px;
+  --icon-margin-end: 8px;
+  --padding-start: 0;
+}
+
+ion-back-button::part(text) {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.settings-section {
+  margin-bottom: 3rem;
+}
+
+.settings-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding: 0;
+}
+
+.settings-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --background: #f5f5f5;
+  border-radius: 10px;
+  margin-bottom: 1px;
+}
+
+ion-card{
+  background-color: white;
+  border-radius: .5rem;
+  box-shadow: rgba(209, 208, 208, 0.5);
+}
+ion-card-content {
+  margin-bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+
+}
+
+ion-label {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+ion-radio {
+  --color: #e6e6e6;
+  --color-checked: #000000;
+}
+
+ion-radio-group ion-card-content{
+  --background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+ion-tab-button {
+  --color: #888;
+  --color-selected: #000;
+}
+
+ion-tab-button ion-icon {
+  font-size: 24px;
+}
+
+ion-tab-button:nth-child(3) ion-icon {
+  font-size: 36px;
+}
+ion-tab-bar{
+  border: none;
+}
+
+hr{
+  border: none;
+  background-color: #e0e0e0;
+  font-weight: 300;
+}
+.temp-scales{
+  padding: .5rem;
+}

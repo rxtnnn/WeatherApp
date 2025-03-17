@@ -1,0 +1,111 @@
+/* Global styles */
+*{
+  color: black;
+  background-color: white;
+}
+ion-content {
+  --background: white;
+  --padding-top: 20px;
+  overflow: hidden;
+}
+
+/* Header styles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px;
+  margin-bottom: 16px;
+}
+
+ion-back-button {
+  --icon-font-size: 22px;
+  --icon-margin-end: 8px;
+  --padding-start: 0;
+}
+
+ion-back-button::part(text) {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Search bar styles */
+.custom-searchbar {
+  --background: #e4e4e4;
+  --border-radius: 12px;
+  --box-shadow: none;
+  --placeholder-color: black;
+  --height: 48px;
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+/* Weather cards styles */
+.weather-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.location-card {
+  margin: 0;
+  border-radius: 16px;
+  background: white;
+}
+
+ion-card-content {
+  padding: 16px;
+}
+
+.location-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.location-name h2 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+}
+
+.location-name p {
+  font-size: 14px;
+  margin: 0;
+}
+
+.temperature {
+  display: flex;
+  align-items: center;
+}
+
+.temp-value {
+  font-size: 48px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.high-low {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12px;
+}
+
+/* Footer tab bar styles */
+ion-tab-button {
+  --color: #888;
+  --color-selected: #000;
+}
+
+ion-tab-button ion-icon {
+  font-size: 24px;
+}
+
+ion-tab-button:nth-child(2) ion-icon {
+  font-size: 36px;
+}
+ion-tab-bar{
+  border: none;
+}

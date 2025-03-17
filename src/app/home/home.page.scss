@@ -1,56 +1,177 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;600&display=swap');
 
 *{
-  font-family: "Poppins", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: black;
   padding: 0;
   margin: 0;
   background-color: white;
 }
-ion-content{
-  height: 70vh;
+
+.home-container{
+  height: 100%;
+  overflow-y: scroll;
 }
-.myloc{
-  font-size: 2rem;
-}
-.temperature{
-  font-size: 5rem;
-  font-weight: 500;
-}
-.main{
-  display: grid;
-  justify-content: center;
-  text-align: center;
-  margin-top: 5rem;
-  margin-bottom: 7rem;
-}
-.pressure{
+.weather-location-container {
   display: flex;
-  justify-content: space-evenly;
-}
-.hourly{
-  margin: 1rem 3rem 0 3rem;
-  padding: 1rem;
-}
-.weekly-list{
-  margin: 1rem 3rem 0 3rem;
-  padding: 1rem;
-}
-
-.hour-card{
-  border-radius: 40px;
-  display: grid;
-  border-radius: 40rem;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  box-shadow: 10px;
-  height: 10vh;
-  padding: .5rem;
+  padding: 20px;
+  margin-top: 7rem;
 
 }
-.hourly-grid{
-  gap: 2rem;
 
+.location-header {
+  margin-bottom: 8px;
 }
+
+.location-name {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  padding: 0;
+}
+
+.location-city {
+  font-size: 1rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  margin: .5rem 0 .4rem 0;
+  padding: 0;
+  letter-spacing: 1px;
+}
+
+.temperature-display {
+  margin: 0;
+}
+
+.temperature-value {
+  font-size: 6rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.weather-condition {
+  margin: 0 0 8px 0;
+
+  p {
+    font-size: 16px;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.temperature-range {
+  display: flex;
+  gap: 8px;
+
+  span {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.high-temp, .low-temp {
+  letter-spacing: 0.5px;
+}
+
+
+
+// hour card
+.hourly-title{
+  margin-bottom: .5rem;
+  opacity: 0.7;
+}
+.hourly-list{
+  margin: 1rem 3rem 0 3rem;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 16px 0;
+}
+
+ion-card-title {
+  font-weight: bold;
+  font-size: 20px;
+  margin: 0;
+}
+
+ion-card-subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+}
+
+ion-card-content {
+  padding: none;
+}
+
+.scroll-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 16px 0;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.forecast-container {
+  display: inline-flex;
+  padding: 1rem;
+}
+
+.forecast-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  border-radius: 30px;
+  padding: 16px 12px;
+  margin-right: 8px;
+  min-width: 70px;
+  height: 150px;
+}
+
+.time {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.weather-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 12px;
+
+  ion-icon {
+    font-size: 1.5rem;
+    color: #4c8dff;
+    margin-bottom: 4px;
+  }
+}
+
+.precipitation {
+  font-size: 12px;
+  color: #4c8dff;
+}
+
+.temperature {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+
+// weekly card
 .weather-icon{
   display: flex;
   flex-direction: column;
@@ -63,10 +184,7 @@ hr{
   background-color: #e0e0e0;
   font-weight: 300;
 }
-.hourly-title{
-  margin-bottom: .5rem;
-  opacity: 0.7;
-}
+
 .weekly-title{
   margin-bottom: .5rem;
   opacity: 0.7;
@@ -77,16 +195,19 @@ hr{
   padding: .5rem;
   font-size: 1rem;
 }
-
+.weekly-list{
+  margin: 1rem 3rem 0 3rem;
+  padding: 1rem;
+}
 .weather-container {
   margin: 1rem 2rem 10rem 2rem;
-  padding: 1rem;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
 
 }
-
+.weather-grid ion-col{
+  padding: .8rem;
+}
 .weather-card {
   flex: 1;
   border-radius: 16px;
@@ -121,4 +242,19 @@ ion-card-content {
 }
 .condition-icon{
   opacity: 0.5;
+}
+ion-tab-button {
+  --color: #888;
+  --color-selected: #000;
+}
+
+ion-tab-button ion-icon {
+  font-size: 24px;
+}
+
+ion-tab-button:nth-child(1) ion-icon {
+  font-size: 36px;
+}
+ion-tab-bar{
+  border: none;
 }
