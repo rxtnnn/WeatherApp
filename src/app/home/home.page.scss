@@ -5,12 +5,23 @@
   color: black;
   padding: 0;
   margin: 0;
-  background-color: white;
+
 }
 
 .home-container{
   height: 100%;
   overflow-y: scroll;
+    background: linear-gradient(
+      to bottom,
+      #a7c9ff 0%,
+      #c1deff 25%,
+      #d7e9ff 50%,
+      #edf4ff 75%,
+      #f8fbff 100%
+    );
+    min-height: 100vh;
+    width: 100%;
+    border: 2px solid #8a4dff;
 }
 .weather-location-container {
   display: flex;
@@ -85,6 +96,8 @@
 }
 .hourly-list{
   margin: 1rem 3rem 0 3rem;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
 }
 
 .header-container {
@@ -198,6 +211,8 @@ hr{
 .weekly-list{
   margin: 1rem 3rem 0 3rem;
   padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
 }
 .weather-container {
   margin: 1rem 2rem 10rem 2rem;
@@ -212,6 +227,7 @@ hr{
   flex: 1;
   border-radius: 16px;
   margin: 0;
+  background-color: rgba(255, 255, 255, 0.5);
 }
 .header {
   display: flex;
@@ -246,6 +262,7 @@ ion-card-content {
 ion-tab-button {
   --color: #888;
   --color-selected: #000;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 ion-tab-button ion-icon {
@@ -255,6 +272,8 @@ ion-tab-button ion-icon {
 ion-tab-button:nth-child(1) ion-icon {
   font-size: 36px;
 }
+
 ion-tab-bar{
   border: none;
+  background-color: rgba(255, 255, 255, 0.1);
 }
