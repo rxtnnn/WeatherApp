@@ -1,9 +1,10 @@
-/* Global styles */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 *{
   color: black;
+  font-family: "Poppins", sans-serif;
 }
 ion-content {
-  --background: white;
+  background-color: rgba(255, 255, 255, 0.5);
   --padding-top: 20px;
   overflow: hidden;
 }
@@ -72,7 +73,9 @@ ion-searchbar{
 ion-card-content {
   padding: 16px;
 }
-
+ion-card{
+  box-shadow: none;
+}
 .location-info {
   display: flex;
   justify-content: space-between;
