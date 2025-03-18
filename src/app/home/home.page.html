@@ -1,25 +1,28 @@
 <ion-content>
   <ion-tabs>
-    <!-- Tab for Home -->
+    <!-- 5257774fbe96aeea8e4075fef271edf9 -->
     <ion-tab tab="home">
       <div class="home-container">
         <div class="weather-location-container">
+          <!-- Display City -->
           <div class="location-header">
             <h1 class="location-name">My Location</h1>
-            <p class="location-city">CEBU</p>
+            <p class="location-city">{{ locationCity }}</p>
           </div>
 
+        <!-- Display Temperature -->
           <div class="temperature-display">
-            <span class="temperature-value">19°</span>
+            <span class="temperature-value">{{ temperature }}</span>
           </div>
 
+          <!-- Display weather condition -->
           <div class="weather-condition">
-            <p>Mostly Clear</p>
+            <p>{{ weatherCondition | titlecase }}</p>
           </div>
 
           <div class="temperature-range">
-            <span class="high-temp">H:24°</span>
-            <span class="low-temp">L:18°</span>
+            <span class="high-temp">H: {{ highPressure }}</span>
+            <span class="low-temp">L: {{ lowPressure }}</span>
           </div>
         </div>
 
@@ -27,7 +30,7 @@
         <ion-card-header>
           <div class="header-container">
             <ion-card-title>TODAY</ion-card-title>
-            <ion-card-subtitle>Mar, 10</ion-card-subtitle>
+            <ion-card-subtitle>{{ currentDate }}</ion-card-subtitle>
           </div>
         </ion-card-header>
 
@@ -35,48 +38,34 @@
           <hr>
           <div class="scroll-container">
             <div class="forecast-container">
-              <!-- 12 AM -->
-              <ion-card class="forecast-item">
-                <div class="time">12 AM</div>
+              <ion-card class="forecast-item" *ngFor="let hour of hourlyForecast">
+                <div class="time">{{ hour.time }}</div>
                 <div class="weather-icon">
-                  <ion-icon name="rainy"></ion-icon>
-                  <div class="precipitation">30%</div>
+                  <ion-icon [name]="getWeatherIcon(hour.condition)"></ion-icon>
                 </div>
-                <div class="temperature">25°</div>
-              </ion-card>
-
-              <ion-card class="forecast-item active">
-                <div class="time">1 AM</div>
-                <div class="weather-icon">
-                  <ion-icon name="partly-sunny"></ion-icon>
-                  <div class="precipitation">30%</div>
-                </div>
-                <div class="temperature">25°</div>
+                <div class="temperature">{{ hour.temp }}</div>
               </ion-card>
             </div>
           </div>
         </ion-card-content>
+
       </ion-card>
 
       <ion-card class="weekly-list">
         <p class="weekly-title">5-DAY FORECAST</p>
         <hr>
-        <ion-grid class="weeekly-grid">
-          <ion-row class="weekly">MON<span>moon</span> <span>31°</span></ion-row>
+        <ion-grid class="weekly-grid">
+          <ion-row *ngFor="let day of weeklyForecast" class="weekly">
+            {{ day.day }} <ion-icon [name]="day.icon"></ion-icon> <span>{{ day.temp }}</span>
+          </ion-row>
           <hr>
-          <ion-row class="weekly">TUE<span>moon</span> <span>31°</span></ion-row>
-          <hr>
-          <ion-row class="weekly">WED<span>moon</span> <span>31°</span></ion-row>
-          <hr>
-          <ion-row class="weekly">THUR<span>moon</span> <span>31°</span></ion-row>
-          <hr>
-          <ion-row class="weekly">FRI<span>moon</span> <span>31°</span></ion-row>
         </ion-grid>
       </ion-card>
 
       <div class="weather-container">
         <ion-grid class="weather-grid">
           <ion-row>
+
             <ion-col>
               <ion-card class="weather-card temperature-card">
                 <ion-card-content>
