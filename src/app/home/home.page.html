@@ -58,7 +58,6 @@
           <ion-row *ngFor="let day of weeklyForecast" class="weekly">
             {{ day.day }} <ion-icon [name]="day.icon"></ion-icon> <span>{{ day.temp }}</span>
           </ion-row>
-          <hr>
         </ion-grid>
       </ion-card>
 
@@ -73,8 +72,8 @@
                     <ion-icon name="thermometer-outline" class="condition-icon"></ion-icon>
                     <span>FEELS LIKE</span>
                   </div>
-                  <div class="value">19°</div>
-                  <div class="desc-condition">Similar to the actual temperature.</div>
+                  <div class="value">{{ feelsLikeTemperature }}</div>
+                  <div class="desc-condition">{{ feelsLikeDescription }}</div>
                 </ion-card-content>
               </ion-card>
             </ion-col>
@@ -85,8 +84,8 @@
                     <ion-icon name="water-outline" class="condition-icon"></ion-icon>
                     <span>HUMIDITY</span>
                   </div>
-                  <div class="value">90%</div>
-                  <div class="desc-condition">The dew point is 17 right now.</div>
+                  <div class="value">{{ humidity }}</div>
+                  <div class="desc-condition">{{ dewPoint }}</div>
                 </ion-card-content>
               </ion-card>
             </ion-col>
@@ -94,11 +93,11 @@
               <ion-card class="weather-card precip-card">
                 <ion-card-content>
                   <div class="header">
-                    <ion-icon name="WATER-outline" class="condition-icon"></ion-icon>
+                    <ion-icon name="water-outline" class="condition-icon"></ion-icon>
                     <span>PRECIPITATION</span>
                   </div>
-                  <div class="value">90%</div>
-                  <div class="desc-condition">7mm expected in the next 24hrs</div>
+                  <div class="value">{{ precipitationLast3h }}</div>
+                  <div class="desc-condition">{{ precipitationNext24h }}</div>
                 </ion-card-content>
               </ion-card>
             </ion-col>
@@ -109,7 +108,7 @@
                     <ion-icon name="speedometer-outline" class="condition-icon"></ion-icon>
                     <span>WIND SPEED</span>
                   </div>
-                  <div class="value">90%</div>
+                  <div class="value">10KM/H Wind</div>
                   <div class="desc-condition">7mm expected in the next 24hrs</div>
                 </ion-card-content>
               </ion-card>

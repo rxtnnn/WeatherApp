@@ -16,6 +16,12 @@ export class HomePage implements OnInit {
   weatherCondition: string = '';
   highPressure: string = '';
   lowPressure: string = '';
+  feelsLikeTemperature: string = '';
+  feelsLikeDescription: string = '';
+  humidity: string = '';
+  dewPoint: string = '';
+  precipitationLast3h: string = '';
+  precipitationNext24h: string = '';
   hourlyForecast: { time: string; temp: string; condition: string }[] = [];
   weeklyForecast: { day: string; icon: string; temp: string }[] = [];
 
@@ -41,6 +47,7 @@ export class HomePage implements OnInit {
       this.getWeatherData(latitude, longitude);
       this.getHourlyWeather(latitude, longitude);
       this.getWeeklyWeather(latitude, longitude);
+      this.getPrecipitationData(latitude, longitude);
     } catch (error) {
       alert('Error getting location: ' + error);
       this.locationCity = 'Location unavailable';
@@ -48,6 +55,8 @@ export class HomePage implements OnInit {
       this.weatherCondition = 'N/A';
       this.highPressure = 'N/A';
       this.lowPressure = 'N/A';
+      this.feelsLikeTemperature = 'N/A';
+      this.feelsLikeDescription = 'N/A';
     }
   }
 
@@ -70,25 +79,40 @@ export class HomePage implements OnInit {
 
     this.http.get<any>(url).subscribe(
       (data) => {
-        this.temperature = `${Math.round(data.main.temp)}°`;
+        this.temperature = `${Math.trunc(data.main.temp)}°`;
         this.weatherCondition = data.weather[0].description;
+
+        // Feels like temperature
+        const feelsLike = Math.trunc(data.main.feels_like);
+        this.feelsLikeTemperature = `${feelsLike}°`;
+        this.feelsLikeDescription = this.getFeelsLikeDescription(data.main.temp, feelsLike);
+
+        // Humidity and dew point
+        const humidity = data.main.humidity;
+        this.humidity = `${humidity}%`;
+        this.dewPoint = `The dew point is ${this.calculateDewPoint(data.main.temp, humidity)}° right now.`;
 
         const currentPressure = data.main.pressure;
         const referencePressure = 1013;
         const temperatureDifference = (currentPressure - referencePressure) * 0.12;
 
-        this.highPressure = `${Math.round(data.main.temp + temperatureDifference)}°`;
-        this.lowPressure = `${Math.round(data.main.temp - temperatureDifference)}°`;
+        this.highPressure = `${Math.trunc(data.main.temp + temperatureDifference)}°`;
+        this.lowPressure = `${Math.trunc(data.main.temp - temperatureDifference)}°`;
       },
       (error) => {
         alert('Error fetching weather: ' + error);
         this.temperature = 'N/A';
         this.weatherCondition = 'N/A';
+        this.feelsLikeTemperature = 'N/A';
+        this.feelsLikeDescription = 'N/A';
+        this.humidity = 'N/A';
+        this.dewPoint = 'N/A';
         this.highPressure = 'N/A';
         this.lowPressure = 'N/A';
       }
     );
   }
+
 
   getHourlyWeather(latitude: number, longitude: number) {
     const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
@@ -111,7 +135,7 @@ export class HomePage implements OnInit {
 
     this.http.get<any>(url).subscribe(
       (data) => {
-        const dailyData: { [key: string]: any[] } = {};
+        const dailyData: { [key: string]: any[] } = {}; //object to store weather per day
 
         // Group data by day
         data.list.forEach((entry: any) => {
@@ -153,4 +177,62 @@ export class HomePage implements OnInit {
         return 'partly-sunny';
     }
   }
+
+  getFeelsLikeDescription(actualTemp: number, feelsLike: number): string {
+    const difference = Math.abs(actualTemp - feelsLike);
+    console.log(difference)
+    if (difference < 2) {
+      return 'Similar to the actual temperature.';
+    } else if (feelsLike > actualTemp) {
+      return 'Feels warmer than the actual temperature.';
+    } else {
+      return 'Feels cooler than the actual temperature.';
+    }
+  }
+
+  calculateDewPoint(temp: number, humidity: number): number {
+    const a = 17.27;
+    const b = 237.7;
+    const alpha = ((a * temp) / (b + temp)) + Math.log(humidity / 100);
+    return Math.trunc((b * alpha) / (a - alpha)); // Truncate to remove decimals
+  }
+
+  getPrecipitationData(latitude: number, longitude: number) {
+    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
+
+    this.http.get<any>(url).subscribe(
+      (data) => {
+        let last3hPrecip = 0;
+        let totalRainNext24h = 0;
+
+        const now = Date.now(); // Get current timestamp in milliseconds
+
+        data.list.forEach((hour: any) => {
+          const forecastTime = hour.dt * 1000; // Convert forecast time to milliseconds
+
+          // Check if rain data exists
+          if (hour.rain && hour.rain['3h']) {
+            if (forecastTime >= now - 3 * 3600000 && forecastTime < now) {
+              last3hPrecip = hour.rain['3h']; // Get last 3h rainfall (latest available)
+            }
+            if (forecastTime > now && forecastTime <= now + 24 * 3600000) {
+              totalRainNext24h += hour.rain['3h']; // Sum next 24h rainfall
+            }
+          }
+        });
+
+        // Display correct values
+        this.precipitationLast3h = last3hPrecip > 0 ? `${last3hPrecip.toFixed(1)}mm in last 3h` : "No rainfall in last 3h";
+        this.precipitationNext24h = totalRainNext24h > 0 ? `${totalRainNext24h.toFixed(1)}mm expected in the next 24hrs` : "No rainfall expected in next 24hrs";
+      },
+      (error) => {
+        alert('Error fetching precipitation data: ' + error);
+        this.precipitationLast3h = 'N/A';
+        this.precipitationNext24h = 'N/A';
+      }
+    );
+  }
+
+
+
 }
