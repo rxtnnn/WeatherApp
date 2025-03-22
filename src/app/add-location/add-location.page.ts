@@ -17,6 +17,7 @@ interface Location {
   low?: number;
   isCurrentLocation?: boolean;
   selected?: boolean;
+  isExisting?: boolean; // Flag to identify if location is already saved
 }
 
 @Component({
@@ -29,6 +30,8 @@ export class AddLocationPage implements OnInit, OnDestroy {
   // Search properties
   searchQuery = '';
   searchedLocation: Location | null = null;
+  filteredLocations: Location[] = []; // Array to hold filtered results
+  showingSearchResults = false;
 
   // Location properties
   currentLocation: Location = {
@@ -105,42 +108,84 @@ export class AddLocationPage implements OnInit, OnDestroy {
   /**
    * Searches for locations based on user input
    */
-  searchLocation() {
-    if (!this.searchQuery || this.searchQuery.length < 2) {
-      this.searchedLocation = null;
+  searchLocation(event: Event) {
+    const target = event.target as HTMLIonSearchbarElement;
+    const query = target.value?.toLowerCase() || '';
+
+    // Reset search state
+    this.searchedLocation = null;
+    this.filteredLocations = [];
+    this.showingSearchResults = false;
+    this.errorMessage = '';
+
+    // Clear previous search results if query is too short
+    if (!query || query.length < 2) {
       return;
     }
 
     this.isLoading = true;
-    this.errorMessage = '';
+    this.showingSearchResults = true;
 
-    const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(this.searchQuery)}&limit=5&appid=${this.weatherApiKey}`;
+    // First, filter through existing locations (current and saved)
+    let matchFound = false;
 
-    this.http.get<any[]>(url)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (data) => {
-          if (data && data.length > 0) {
-            // Just take the first result
-            this.searchedLocation = {
-              name: data[0].name,
-              country: data[0].country,
-              lat: data[0].lat,
-              lon: data[0].lon
-            };
-          } else {
-            this.searchedLocation = null;
-            this.errorMessage = 'No locations found';
+    // Check current location
+    if (this.currentLocation && this.currentLocation.name.toLowerCase().includes(query)) {
+      this.filteredLocations.push({...this.currentLocation, isExisting: true});
+      matchFound = true;
+    }
+
+    // Check saved locations
+    const matchingSavedLocations = this.savedLocations.filter(location =>
+      location.name.toLowerCase().includes(query));
+
+    if (matchingSavedLocations.length > 0) {
+      this.filteredLocations.push(...matchingSavedLocations.map(loc => ({...loc, isExisting: true})));
+      matchFound = true;
+    }
+
+    // If no match found locally, search via API
+    if (!matchFound) {
+      const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${this.weatherApiKey}`;
+
+      this.http.get<any[]>(url)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (data) => {
+            if (data && data.length > 0) {
+              // Create a new location from API results
+              const newLocation = {
+                name: data[0].name,
+                country: data[0].country,
+                lat: data[0].lat,
+                lon: data[0].lon
+              };
+
+              // Double check if this location exists in our saved locations
+              // (Using coordinates for more accurate matching)
+              const locationExists = this.locationExists(newLocation);
+
+              if (locationExists) {
+                // It exists - don't show add button
+                // The existing location should already be in filteredLocations from above
+              } else {
+                // New location - show add button
+                this.searchedLocation = newLocation;
+              }
+            } else {
+              this.errorMessage = 'No locations found';
+            }
+
+            this.isLoading = false;
+          },
+          error: (error) => {
+            this.isLoading = false;
+            this.errorMessage = 'Error searching for locations';
           }
-
-          this.isLoading = false;
-        },
-        error: (error) => {
-          this.isLoading = false;
-          this.errorMessage = 'Error searching for locations';
-          this.searchedLocation = null;
-        }
-      });
+        });
+    } else {
+      this.isLoading = false;
+    }
   }
 
   /**
@@ -162,6 +207,8 @@ export class AddLocationPage implements OnInit, OnDestroy {
     this.fetchWeatherData(this.searchedLocation);
     this.searchQuery = '';
     this.searchedLocation = null;
+    this.filteredLocations = [];
+    this.showingSearchResults = false;
   }
 
   /**
@@ -180,6 +227,16 @@ export class AddLocationPage implements OnInit, OnDestroy {
                             Math.abs(this.currentLocation.lon - location.lon) < 0.01;
 
     return existsInSaved || isCurrentLocation;
+  }
+
+  /**
+   * Clears search results
+   */
+  clearSearch() {
+    this.searchQuery = '';
+    this.searchedLocation = null;
+    this.filteredLocations = [];
+    this.showingSearchResults = false;
   }
 
   /**

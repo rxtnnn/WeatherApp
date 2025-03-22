@@ -20,27 +20,58 @@
           </div>
 
           <!-- Search bar -->
-          <ion-searchbar
+          <ion-searchbar [debounce]="1000"
             placeholder="Search or Add a City"
             class="custom-searchbar"
             [(ngModel)]="searchQuery"
-            (ionInput)="searchLocation()">
+            (ionInput)="searchLocation($event)"
+            (ionClear)="clearSearch()">
           </ion-searchbar>
 
           <!-- Weather location cards -->
           <div class="weather-cards">
-            <!-- Search result card -->
-            <ion-card *ngIf="searchedLocation" class="location-card">
-              <ion-card-content class="search-content">
-                <div class="location-info">
-                  <h2>{{ searchedLocation.name }}, {{ searchedLocation.country }}</h2>
-                  <ion-button size="small" color="dark" (click)="addLocation()" class="addBtn">Add</ion-button>
-                </div>
-              </ion-card-content>
-            </ion-card>
+            <!-- Search results display -->
+            <div *ngIf="showingSearchResults" class="location-card">
+              <!-- New location result (with Add button) -->
+              <ion-card *ngIf="searchedLocation" class="location-card">
+                <ion-card-content class="search-content">
+                  <div class="location-info">
+                    <h2>{{ searchedLocation.name }}, {{ searchedLocation.country }}</h2>
+                    <ion-button size="small" color="dark" (click)="addLocation()" class="addBtn">Add</ion-button>
+                  </div>
+                </ion-card-content>
+              </ion-card>
 
-            <!-- Combined location card -->
-            <ion-card #ionList class="location-cards-container">
+              <!-- Existing locations that match search -->
+              <ion-card *ngIf="filteredLocations.length > 0" class="location-cards-container">
+                <ion-item *ngFor="let location of filteredLocations" class="location-item" (click)="openLocationDetails(location)">
+                  <ion-label>
+                    <div class="location-info">
+                      <div class="location-name">
+                        <h2 class="fw-bold">{{ location.isCurrentLocation ? 'My Location' : location.name }}</h2>
+                        <p>{{ location.country }}</p>
+                      </div>
+                      <div class="temperature">
+                        <span class="temp-value">{{ location.temp }}°</span>
+                      </div>
+                    </div>
+                    <div class="high-low">
+                      <span>H: {{ location.high }}° L: {{ location.low }}°</span>
+                    </div>
+                  </ion-label>
+                </ion-item>
+              </ion-card>
+
+              <!-- No results message -->
+              <ion-card *ngIf="!searchedLocation && filteredLocations.length === 0 && !isLoading && showingSearchResults" class="location-card">
+                <ion-card-content>
+                  <p>{{ errorMessage || 'No locations found' }}</p>
+                </ion-card-content>
+              </ion-card>
+            </div>
+
+            <!-- Regular location list (when not searching) -->
+            <ion-card *ngIf="!showingSearchResults" class="location-cards-container">
               <!-- Current location first -->
               <ion-item-sliding *ngIf="currentLocation" #currentSliding class="location-card-wrapper">
                 <ion-item class="location-item" (click)="openLocationDetails(currentLocation)">
