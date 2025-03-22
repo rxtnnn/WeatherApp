@@ -1,4 +1,4 @@
-<ion-content>
+<ion-content class="home">
   <ion-tabs>
     <!-- 5257774fbe96aeea8e4075fef271edf9 -->
     <ion-tab tab="home">
@@ -41,7 +41,7 @@
               <ion-card class="forecast-item" *ngFor="let hour of hourlyForecast">
                 <div class="time">{{ hour.time }}</div>
                 <div class="weather-icon">
-                  <ion-icon [name]="getWeatherIcon(hour.condition)"></ion-icon>
+                  <ion-icon [name]="getWeatherIcon(hour.condition)" class="icon-weather"></ion-icon>
                 </div>
                 <div class="temperature">{{ hour.temp }}</div>
               </ion-card>
@@ -56,78 +56,95 @@
         <hr>
         <ion-grid class="weekly-grid">
           <ion-row *ngFor="let day of weeklyForecast" class="weekly">
-            {{ day.day }} <ion-icon [name]="day.icon"></ion-icon> <span>{{ day.temp }}</span>
+            {{ day.day }} <ion-icon [name]="day.icon" class="weekly-icon"></ion-icon> <span class="week-temp">{{ day.temp }}</span>
           </ion-row>
         </ion-grid>
       </ion-card>
 
-      <div class="weather-container">
-        <ion-grid class="weather-grid">
-          <ion-row>
+      <div class="page-container">
+        <div class="weather-container">
+          <ion-grid class="weather-grid">
+            <ion-row>
+              <!-- Feels Like Card -->
+              <ion-col size="6" size-md="6">
+                <ion-card class="weather-card temperature-card">
+                  <ion-card-content>
+                    <div class="header">
+                      <ion-icon name="thermometer-outline" class="condition-icon"></ion-icon>
+                      <span>FEELS LIKE</span>
+                    </div>
+                    <div class="value">{{ feelsLikeTemperature || '--' }}</div>
+                    <div class="desc-condition">
+                      {{ feelsLikeDescription || 'Loading...' }}
+                    </div>
+                  </ion-card-content>
+                </ion-card>
+              </ion-col>
 
-            <ion-col>
-              <ion-card class="weather-card temperature-card">
-                <ion-card-content>
-                  <div class="header">
-                    <ion-icon name="thermometer-outline" class="condition-icon"></ion-icon>
-                    <span>FEELS LIKE</span>
-                  </div>
-                  <div class="value">{{ feelsLikeTemperature }}</div>
-                  <div class="desc-condition">{{ feelsLikeDescription }}</div>
-                </ion-card-content>
-              </ion-card>
-            </ion-col>
-            <ion-col>
-              <ion-card class="weather-card humidity-card">
-                <ion-card-content>
-                  <div class="header">
-                    <ion-icon name="water-outline" class="condition-icon"></ion-icon>
-                    <span>HUMIDITY</span>
-                  </div>
-                  <div class="value">{{ humidity }}</div>
-                  <div class="desc-condition">{{ dewPoint }}</div>
-                </ion-card-content>
-              </ion-card>
-            </ion-col>
-            <ion-col>
-              <ion-card class="weather-card precip-card">
-                <ion-card-content>
-                  <div class="header">
-                    <ion-icon name="water-outline" class="condition-icon"></ion-icon>
-                    <span>PRECIPITATION</span>
-                  </div>
-                  <div class="value">{{ precipitationLast3h }}</div>
-                  <div class="desc-condition">{{ precipitationNext24h }}</div>
-                </ion-card-content>
-              </ion-card>
-            </ion-col>
-            <ion-col>
-              <ion-card class="weather-card wind-card">
-                <ion-card-content>
-                  <div class="header">
-                    <ion-icon name="speedometer-outline" class="condition-icon"></ion-icon>
-                    <span>WIND SPEED</span>
-                  </div>
-                  <div class="value">10KM/H Wind</div>
-                  <div class="desc-condition">7mm expected in the next 24hrs</div>
-                </ion-card-content>
-              </ion-card>
-            </ion-col>
-      </ion-row>
-      </ion-grid>
+              <!-- Humidity Card -->
+              <ion-col size="6" size-md="6">
+                <ion-card class="weather-card humidity-card">
+                  <ion-card-content>
+                    <div class="header">
+                      <ion-icon name="water-outline" class="condition-icon"></ion-icon>
+                      <span>HUMIDITY</span>
+                    </div>
+                    <div class="value">{{ humidity || '--' }}</div>
+                    <div class="desc-condition">{{ dewPoint || '--' }}</div>
+                  </ion-card-content>
+                </ion-card>
+              </ion-col>
+
+              <!-- Visibility Card -->
+              <ion-col size="6" size-md="6">
+                <ion-card class="weather-card wind-card">
+                  <ion-card-content>
+                    <div class="header">
+                      <ion-icon name="eye-outline" class="condition-icon"></ion-icon>
+                      <span>VISIBILITY</span>
+                    </div>
+                    <div class="value mb-3">{{ visibility }}</div>
+                    <div class="desc-condition"> {{ visibilityDescription }}</div>
+                  </ion-card-content>
+                </ion-card>
+              </ion-col>
+
+              <!-- Rainfall Card -->
+              <ion-col size="6" size-md="6">
+                <ion-card class="weather-card rainfall-container">
+                  <ion-card-content>
+                    <div class="header">
+                      <ion-icon name="water-outline" class="condition-icon"></ion-icon>
+                      <span>RAINFALL</span>
+                    </div>
+                    <div class="value fs-2">
+                      {{ precipitationLast3h }} mm
+                      <p class="rainfall-label fs-6">in the 3 hours</p>
+                    </div>
+                    <div class="desc-condition">
+                      {{ precipitationNext24h }} mm next 24 hours
+                    </div>
+                  </ion-card-content>
+                </ion-card>
+              </ion-col>
+
+            </ion-row>
+          </ion-grid>
+        </div>
       </div>
+
     </div>
     </ion-tab>
 
     <!-- Tab Bar -->
     <ion-tab-bar slot="bottom">
-      <ion-tab-button tab="home" [routerLink]="['/home']">
+      <ion-tab-button [routerLink]="['/home']">
         <ion-icon name="location-outline"></ion-icon>
       </ion-tab-button>
-      <ion-tab-button tab="add-location" [routerLink]="['/add-location']">
+      <ion-tab-button [routerLink]="['/add-location']">
         <ion-icon name="add-circle-outline"></ion-icon>
       </ion-tab-button>
-      <ion-tab-button tab="settings" [routerLink]="['/settings']">
+      <ion-tab-button [routerLink]="['/settings']">
         <ion-icon name="settings"></ion-icon>
       </ion-tab-button>
     </ion-tab-bar>

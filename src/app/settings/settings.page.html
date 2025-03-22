@@ -1,5 +1,6 @@
 <ion-content class="settings-page">
   <ion-tabs>
+
     <ion-tab tab="settings">
       <div class="ion-padding">
       <div class="header">
@@ -15,20 +16,20 @@
         <ion-card class="appearance">
           <ion-card-content class="settings-item">
             <ion-label>Dark mode</ion-label>
-            <ion-toggle slot="end" ></ion-toggle>
+            <ion-toggle slot="end" (ionChange)="toggleTheme($event)"></ion-toggle>
           </ion-card-content>
         </ion-card>
       </div>
 
-      <!-- Temperature Scales Section -->
+      <!-- Temperature Scales Section [value]="temperatureScale" (ionChange)="changeTemperatureScale($event)" -->
       <div class="settings-section">
         <h1 class="fw-bold">Temperature Scales</h1>
 
         <ion-card class="temp-scales">
-            <ion-radio-group>
+            <ion-radio-group >
               <ion-card-content class="settings-item">
                 <ion-label>Celsius</ion-label>
-                <ion-radio slot="end" value="celsius" checked></ion-radio>
+                <ion-radio slot="end" value="celsius"></ion-radio>
               </ion-card-content>
               <hr>
               <ion-card-content class="settings-item">

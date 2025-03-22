@@ -1,7 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { Geolocation } from '@capacitor/geolocation';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../environments/environment';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { WeatherService } from '../services/weather.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-home',
@@ -9,7 +8,7 @@ import { environment } from '../../environments/environment';
   styleUrls: ['./home.page.scss'],
   standalone: false,
 })
-export class HomePage implements OnInit {
+export class HomePage implements OnInit, OnDestroy {
   currentDate: string = '';
   locationCity: string = '';
   temperature: string = '';
@@ -20,74 +19,96 @@ export class HomePage implements OnInit {
   feelsLikeDescription: string = '';
   humidity: string = '';
   dewPoint: string = '';
-  precipitationLast3h: string = '';
-  precipitationNext24h: string = '';
+  precipitationLast3h: string = '0';
+  precipitationNext24h: string = '0';
+  visibility: string = '';
+  visibilityDescription: string = '';
   hourlyForecast: { time: string; temp: string; condition: string }[] = [];
   weeklyForecast: { day: string; icon: string; temp: string }[] = [];
 
-  private apiKey = environment.weatherApiKey;
+  private locationSubscription: Subscription | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private weatherService: WeatherService) {}
 
   ngOnInit() {
     this.currentDate = new Date().toLocaleDateString('en-US', {
-      month: 'short', //displays in 3-letter abbr
-      day: 'numeric' //displays as number
+      month: 'short',
+      day: 'numeric'
     });
-    this.getCurrentLocation();
+
+    // First load stored location if any
+    this.weatherService.loadStoredLocation();
+
+    // Subscribe to location changes
+    this.locationSubscription = this.weatherService.selectedLocation$.subscribe(location => {
+      if (location) {
+        // If we have a selected location, use it
+        this.getCityName(location.latitude, location.longitude);
+        this.getWeatherData(location.latitude, location.longitude);
+        this.getHourlyWeather(location.latitude, location.longitude);
+        this.getWeeklyWeather(location.latitude, location.longitude);
+        this.getPrecipitationData(location.latitude, location.longitude);
+        this.getVisibilityData(location.latitude, location.longitude);
+
+        // If the city is already known from the location selection, use it
+        if (location.city) {
+          this.locationCity = location.city;
+        }
+      } else {
+        // No saved location, use current device location
+        this.getCurrentLocationAndWeather();
+      }
+    });
   }
 
-  async getCurrentLocation() {
+  ngOnDestroy() {
+    if (this.locationSubscription) {
+      this.locationSubscription.unsubscribe();
+    }
+  }
+
+  async getCurrentLocationAndWeather() {
     try {
-      const coordinates = await Geolocation.getCurrentPosition();
-      const { latitude, longitude } = coordinates.coords;
-      console.log('Longitude: ', longitude);
-      console.log('Latitude: ', latitude);
+      const { latitude, longitude } = await this.weatherService.getCurrentLocation();
       this.getCityName(latitude, longitude);
       this.getWeatherData(latitude, longitude);
       this.getHourlyWeather(latitude, longitude);
       this.getWeeklyWeather(latitude, longitude);
       this.getPrecipitationData(latitude, longitude);
+      this.getVisibilityData(latitude, longitude);
     } catch (error) {
-      alert('Error getting location: ' + error);
+      alert('Error getting location or weather data');
       this.locationCity = 'Location unavailable';
       this.temperature = 'N/A';
       this.weatherCondition = 'N/A';
-      this.highPressure = 'N/A';
-      this.lowPressure = 'N/A';
-      this.feelsLikeTemperature = 'N/A';
-      this.feelsLikeDescription = 'N/A';
     }
   }
 
   getCityName(latitude: number, longitude: number) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+    // Skip if we already have the city name
+    if (this.locationCity) return;
 
-    this.http.get<any>(url).subscribe(
+    this.weatherService.getCityName(latitude, longitude).subscribe(
       (data) => {
         this.locationCity = data.address.city || data.address.town || data.address.village || 'Unknown';
       },
       (error) => {
-        alert('Error fetching city name: ' + error);
+        console.error('Error fetching city name:', error);
         this.locationCity = 'Location unavailable';
       }
     );
   }
 
   getWeatherData(latitude: number, longitude: number) {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-
-    this.http.get<any>(url).subscribe(
+    this.weatherService.getWeatherData(latitude, longitude).subscribe(
       (data) => {
-        this.temperature = `${Math.trunc(data.main.temp)}°`;
+        this.temperature = `${Math.round(data.main.temp)}°`;
         this.weatherCondition = data.weather[0].description;
 
-        // Feels like temperature
-        const feelsLike = Math.trunc(data.main.feels_like);
+        const feelsLike = Math.round(data.main.feels_like);
         this.feelsLikeTemperature = `${feelsLike}°`;
         this.feelsLikeDescription = this.getFeelsLikeDescription(data.main.temp, feelsLike);
 
-        // Humidity and dew point
         const humidity = data.main.humidity;
         this.humidity = `${humidity}%`;
         this.dewPoint = `The dew point is ${this.calculateDewPoint(data.main.temp, humidity)}° right now.`;
@@ -96,55 +117,41 @@ export class HomePage implements OnInit {
         const referencePressure = 1013;
         const temperatureDifference = (currentPressure - referencePressure) * 0.12;
 
-        this.highPressure = `${Math.trunc(data.main.temp + temperatureDifference)}°`;
-        this.lowPressure = `${Math.trunc(data.main.temp - temperatureDifference)}°`;
+        this.highPressure = `${Math.round(data.main.temp + temperatureDifference)}°`;
+        this.lowPressure = `${Math.round(data.main.temp - temperatureDifference)}°`;
       },
       (error) => {
-        alert('Error fetching weather: ' + error);
+        console.error('Error fetching weather:', error);
         this.temperature = 'N/A';
         this.weatherCondition = 'N/A';
-        this.feelsLikeTemperature = 'N/A';
-        this.feelsLikeDescription = 'N/A';
-        this.humidity = 'N/A';
-        this.dewPoint = 'N/A';
-        this.highPressure = 'N/A';
-        this.lowPressure = 'N/A';
       }
     );
   }
 
-
   getHourlyWeather(latitude: number, longitude: number) {
-    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-
-    this.http.get<any>(url).subscribe(
+    this.weatherService.getHourlyWeather(latitude, longitude).subscribe(
       (data) => {
         this.hourlyForecast = data.list.slice(0, 24).map((hour: any) => ({
           time: new Date(hour.dt * 1000).toLocaleTimeString([], { hour: 'numeric', hour12: true }),
           temp: `${Math.round(hour.main.temp)}°`,
           condition: hour.weather[0].main,
-          precipitation: Math.round(hour.pop * 100),
         }));
       },
-      () => alert('Error fetching hourly weather')
+      (error) => console.error('Error fetching hourly weather:', error)
     );
   }
 
   getWeeklyWeather(latitude: number, longitude: number) {
-    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-
-    this.http.get<any>(url).subscribe(
+    this.weatherService.getWeeklyWeather(latitude, longitude).subscribe(
       (data) => {
-        const dailyData: { [key: string]: any[] } = {}; //object to store weather per day
+        const dailyData: { [key: string]: any[] } = {};
 
-        // Group data by day
         data.list.forEach((entry: any) => {
           const date = new Date(entry.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' });
           if (!dailyData[date]) dailyData[date] = [];
           dailyData[date].push(entry);
         });
 
-        // Extract high temp & main condition for each day
         this.weeklyForecast = Object.keys(dailyData).slice(0, 5).map((day) => {
           const dayEntries = dailyData[day];
           const maxTemp = Math.max(...dayEntries.map((entry) => entry.main.temp));
@@ -152,7 +159,7 @@ export class HomePage implements OnInit {
           return { day, icon: this.getWeatherIcon(condition), temp: `${Math.round(maxTemp)}°` };
         });
       },
-      () => alert('Error fetching weekly weather')
+      (error) => console.error('Error fetching weekly weather:', error)
     );
   }
 
@@ -180,7 +187,6 @@ export class HomePage implements OnInit {
 
   getFeelsLikeDescription(actualTemp: number, feelsLike: number): string {
     const difference = Math.abs(actualTemp - feelsLike);
-    console.log(difference)
     if (difference < 2) {
       return 'Similar to the actual temperature.';
     } else if (feelsLike > actualTemp) {
@@ -194,45 +200,57 @@ export class HomePage implements OnInit {
     const a = 17.27;
     const b = 237.7;
     const alpha = ((a * temp) / (b + temp)) + Math.log(humidity / 100);
-    return Math.trunc((b * alpha) / (a - alpha)); // Truncate to remove decimals
+    return Math.trunc((b * alpha) / (a - alpha));
   }
 
   getPrecipitationData(latitude: number, longitude: number) {
-    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-
-    this.http.get<any>(url).subscribe(
+    this.weatherService.getPrecipitationData(latitude, longitude).subscribe(
       (data) => {
         let last3hPrecip = 0;
         let totalRainNext24h = 0;
 
-        const now = Date.now(); // Get current timestamp in milliseconds
-
+        const now = Date.now();
         data.list.forEach((hour: any) => {
-          const forecastTime = hour.dt * 1000; // Convert forecast time to milliseconds
-
-          // Check if rain data exists
+          const forecastTime = hour.dt * 1000;
           if (hour.rain && hour.rain['3h']) {
             if (forecastTime >= now - 3 * 3600000 && forecastTime < now) {
-              last3hPrecip = hour.rain['3h']; // Get last 3h rainfall (latest available)
+              last3hPrecip = hour.rain['3h'];
             }
             if (forecastTime > now && forecastTime <= now + 24 * 3600000) {
-              totalRainNext24h += hour.rain['3h']; // Sum next 24h rainfall
+              totalRainNext24h += hour.rain['3h'];
             }
           }
         });
 
-        // Display correct values
-        this.precipitationLast3h = last3hPrecip > 0 ? `${last3hPrecip.toFixed(1)}mm in last 3h` : "No rainfall in last 3h";
-        this.precipitationNext24h = totalRainNext24h > 0 ? `${totalRainNext24h.toFixed(1)}mm expected in the next 24hrs` : "No rainfall expected in next 24hrs";
+        this.precipitationLast3h = last3hPrecip > 0 ? last3hPrecip.toFixed(1) : '0';
+        this.precipitationNext24h = totalRainNext24h > 0 ? totalRainNext24h.toFixed(1) : '0';
       },
-      (error) => {
-        alert('Error fetching precipitation data: ' + error);
-        this.precipitationLast3h = 'N/A';
-        this.precipitationNext24h = 'N/A';
-      }
+      (error) => console.error('Error fetching precipitation data:', error)
     );
   }
 
+  getVisibilityData(latitude: number, longitude: number) {
+    this.weatherService.getVisibilityData(latitude, longitude).subscribe(
+      (data) => {
+        const visibilityKm = data.visibility / 1000;
+        this.visibility = `${visibilityKm} km`;
+        this.visibilityDescription = this.getVisibilityDescription(visibilityKm);
+      },
+      (error) => console.error('Error fetching visibility data:', error)
+    );
+  }
 
-
+  getVisibilityDescription(visibilityKm: number): string {
+    if (visibilityKm >= 10) {
+      return 'Perfectly clear view';
+    } else if (visibilityKm >= 5) {
+      return 'Good visibility';
+    } else if (visibilityKm >= 2) {
+      return 'Moderate visibility';
+    } else if (visibilityKm >= 1) {
+      return 'Poor visibility';
+    } else {
+      return 'Very poor visibility';
+    }
+  }
 }

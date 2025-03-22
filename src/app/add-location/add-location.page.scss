@@ -3,24 +3,7 @@
   color: black;
   font-family: "Poppins", sans-serif;
 }
-ion-content {
-  background-color: rgba(255, 255, 255, 0.5);
-  --padding-top: 20px;
-  overflow: hidden;
-}
-.ion-padding{
-  background: linear-gradient(
-      to bottom,
-      #a7c9ff 0%,
-      #c1deff 25%,
-      #d7e9ff 50%,
-      #edf4ff 75%,
-      #f8fbff 100%
-    );
-    min-height: 100vh;
-    width: 100%;
-    border: 2px solid #8a4dff;
-}
+
 /* Header styles */
 .header {
   display: flex;
@@ -42,13 +25,10 @@ ion-back-button::part(text) {
 }
 
 /* Search bar styles */
-ion-searchbar{
-  border-radius: 16px;
-}
 
 .custom-searchbar {
   --background: #e4e4e4;
-  --border-radius: 16px;
+  --border-radius: 12px;
   --box-shadow: none;
   --placeholder-color: black;
   --height: 48px;
@@ -61,16 +41,18 @@ ion-searchbar{
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-top: 16px;
 }
 
 .location-card {
   margin: 0;
   border-radius: 16px;
   background-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-5px);
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-ion-card-content {
+ion-label {
   padding: 16px;
 }
 ion-card{
@@ -80,12 +62,11 @@ ion-card{
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 8px;
 }
 
-.location-name h2 {
-  font-size: 18px;
-  font-weight: bold;
+.location-name h3 {
+  font-size: 15px;
+  font-weight: 500;
   margin: 0 0 4px 0;
 }
 
@@ -113,7 +94,11 @@ ion-card{
   justify-content: flex-end;
   font-size: 12px;
 }
-
+.add-loc-container{
+  height: 100%;
+  width: 100%;
+  overflow-y: scroll;
+}
 /* Footer tab bar styles */
 ion-tab-button {
   --color: #888;
@@ -131,4 +116,31 @@ ion-tab-button:nth-child(2) ion-icon {
 ion-tab-bar{
   border: none;
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.location-item {
+  --background: transparent;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  --inner-padding-end: 0;
+  --border-color: #f0f0f0;
+  -webkit-margin-bottom-collapse: separate;
+}
+
+.location-cards-container {
+  background: transparent;
+  box-shadow: none;
+}
+
+.location-card-wrapper {
+  margin-bottom: 1rem;
+  border-radius: 1rem;
+  background-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+.location-card-wrapper:last-child {
+  margin-bottom: 3rem;
 }

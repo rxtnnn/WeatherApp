@@ -9,6 +9,7 @@ import { IonicStorageModule } from '@ionic/storage-angular';
 
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
+import { WeatherService } from './services/weather.service';
 
 @NgModule({
   declarations: [AppComponent],
@@ -18,11 +19,11 @@ import { AppRoutingModule } from './app-routing.module';
     AppRoutingModule,
     HttpClientModule,
     FormsModule,
-    IonicStorageModule.forRoot()
+    IonicStorageModule.forRoot(), // Initializes storage
   ],
   providers: [
-    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }
+    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }, WeatherService // Correct reuse strategy for Ionic
   ],
-  bootstrap: [AppComponent],
+  bootstrap: [AppComponent], // Bootstraps the main app component
 })
 export class AppModule {}
