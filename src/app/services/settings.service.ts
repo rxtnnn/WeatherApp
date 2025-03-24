@@ -30,16 +30,14 @@ export class SettingsService {
   }
 
   private async loadSettings() {
-    const storedSettings = await this.storage.get('app_settings');
-    if (storedSettings) {
-      this._settings.next(storedSettings);
-
-      // Apply dark mode if enabled
-      if (storedSettings.darkMode) {
-        document.body.classList.add('dark');
-      } else {
-        document.body.classList.remove('dark');
+    try {
+      const storedSettings = await this.storage.get('app_settings');
+      if (storedSettings) {
+        this._settings.next(storedSettings);
+        this.applySettings(storedSettings);
       }
+    } catch (error) {
+      console.error('Error loading settings:', error);
     }
   }
 
@@ -47,17 +45,20 @@ export class SettingsService {
     const currentSettings = this._settings.value;
     const newSettings = { ...currentSettings, ...settings };
 
-    await this.storage.set('app_settings', newSettings);
-    this._settings.next(newSettings);
-
-    // Apply dark mode toggle
-    if (settings.darkMode !== undefined) {
-      if (settings.darkMode) {
-        document.body.classList.add('dark');
-      } else {
-        document.body.classList.remove('dark');
-      }
+    try {
+      await this.storage.set('app_settings', newSettings);
+      this._settings.next(newSettings);
+      this.applySettings(newSettings);
+    } catch (error) {
+      console.error('Error saving settings:', error);
     }
+  }
+  private applySettings(settings: AppSettings) {
+    // ✅ Apply dark mode instantly
+    document.body.classList.toggle('dark', settings.darkMode);
+
+    // ✅ Apply temperature unit
+    document.body.setAttribute('temp-unit', settings.temperatureUnit);
   }
 
   async addSavedLocation(location: string) {
@@ -76,5 +77,26 @@ export class SettingsService {
 
   getCurrentSettings(): AppSettings {
     return this._settings.value;
+  }
+
+  convertTemperature(value: number, unit: 'celsius' | 'fahrenheit'): number {
+    const currentSettings = this._settings.value;
+
+    if (!value && value !== 0) return 0;
+
+    if (currentSettings.temperatureUnit === unit) {
+      return value;
+    }
+
+    if (unit === 'celsius' && currentSettings.temperatureUnit === 'fahrenheit') {
+      return (value * 9/5) + 32;
+    } else {
+      return (value - 32) * 5/9;
+    }
+  }
+
+  formatTemperature(value: number, originalUnit: 'celsius' | 'fahrenheit'): string {
+    const convertedValue = Math.round(this.convertTemperature(value, originalUnit));
+    return `${convertedValue}°`;
   }
 }

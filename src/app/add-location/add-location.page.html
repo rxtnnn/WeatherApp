@@ -1,142 +1,125 @@
 <ion-content class="addloc">
-  <ion-tabs>
-    <ion-tab tab="add-location">
-      <div class="add-loc-container">
-        <div class="ion-padding">
-          <!-- Header -->
-          <div class="header">
-            <ion-buttons slot="start">
-              <ion-back-button text="Weather" default-href="/home"></ion-back-button>
-            </ion-buttons>
-            <ion-buttons slot="end">
-              <ion-button (click)="toggleSelectionMode()">
-                <ion-icon slot="icon-only" name="ellipsis-horizontal"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-            <!-- Show Delete Button in Selection Mode -->
-            <ion-button *ngIf="selectionMode" (click)="deleteSelected()" color="danger">
-              Delete Selected
-            </ion-button>
-          </div>
-
-          <!-- Search bar -->
-          <ion-searchbar [debounce]="1000"
-            placeholder="Search or Add a City"
-            class="custom-searchbar"
-            [(ngModel)]="searchQuery"
-            (ionInput)="searchLocation($event)"
-            (ionClear)="clearSearch()">
-          </ion-searchbar>
-
-          <!-- Weather location cards -->
-          <div class="weather-cards">
-            <!-- Search results display -->
-            <div *ngIf="showingSearchResults" class="location-card">
-              <!-- New location result (with Add button) -->
-              <ion-card *ngIf="searchedLocation" class="location-card">
-                <ion-card-content class="search-content">
-                  <div class="location-info">
-                    <h2>{{ searchedLocation.name }}, {{ searchedLocation.country }}</h2>
-                    <ion-button size="small" color="dark" (click)="addLocation()" class="addBtn">Add</ion-button>
-                  </div>
-                </ion-card-content>
-              </ion-card>
-
-              <!-- Existing locations that match search -->
-              <ion-card *ngIf="filteredLocations.length > 0" class="location-cards-container">
-                <ion-item *ngFor="let location of filteredLocations" class="location-item" (click)="openLocationDetails(location)">
-                  <ion-label>
-                    <div class="location-info">
-                      <div class="location-name">
-                        <h2 class="fw-bold">{{ location.isCurrentLocation ? 'My Location' : location.name }}</h2>
-                        <p>{{ location.country }}</p>
-                      </div>
-                      <div class="temperature">
-                        <span class="temp-value">{{ location.temp }}°</span>
-                      </div>
-                    </div>
-                    <div class="high-low">
-                      <span>H: {{ location.high }}° L: {{ location.low }}°</span>
-                    </div>
-                  </ion-label>
-                </ion-item>
-              </ion-card>
-
-              <!-- No results message -->
-              <ion-card *ngIf="!searchedLocation && filteredLocations.length === 0 && !isLoading && showingSearchResults" class="location-card">
-                <ion-card-content>
-                  <p>{{ errorMessage || 'No locations found' }}</p>
-                </ion-card-content>
-              </ion-card>
-            </div>
-
-            <!-- Regular location list (when not searching) -->
-            <ion-card *ngIf="!showingSearchResults" class="location-cards-container">
-              <!-- Current location first -->
-              <ion-item-sliding *ngIf="currentLocation" #currentSliding class="location-card-wrapper">
-                <ion-item class="location-item" (click)="openLocationDetails(currentLocation)">
-                  <ion-label>
-                    <div class="location-info">
-                      <div class="location-name">
-                        <h2 class="fw-bold">My Location</h2>
-                        <h3>{{ currentLocation.name }}</h3>
-                        <p>{{ currentLocation.country }}</p>
-                      </div>
-                      <div class="temperature">
-                        <span class="temp-value">{{ currentLocation.temp }}°</span>
-                      </div>
-                    </div>
-                    <div class="high-low">
-                      <span>H: {{ currentLocation.high }}° L: {{ currentLocation.low }}°</span>
-                    </div>
-                  </ion-label>
-                </ion-item>
-              </ion-item-sliding>
-
-              <!-- Saved locations -->
-              <ion-item-sliding *ngFor="let location of savedLocations; let i = index" #slidingItem class="location-card-wrapper">
-                <ion-item class="location-item" (click)="openLocationDetails(location)">
-                  <ion-label>
-                    <div class="location-info">
-                      <div class="location-name">
-                        <h2 class="fw-bold">{{ location.name }}</h2>
-                        <p>{{ location.country }}</p>
-                      </div>
-                      <div class="temperature">
-                        <span class="temp-value">{{ location.temp }}°</span>
-                      </div>
-                    </div>
-                    <div class="high-low">
-                      <span>H: {{ location.high }}° L: {{ location.low }}°</span>
-                    </div>
-                  </ion-label>
-                </ion-item>
-
-                <!-- Delete option for saved locations -->
-                <ion-item-options side="end">
-                  <ion-item-option color="danger" (click)="deleteLocation(i, slidingItem)">
-                    <ion-icon slot="start" name="trash-outline"></ion-icon>
-                    Delete
-                  </ion-item-option>
-                </ion-item-options>
-              </ion-item-sliding>
-            </ion-card>
-          </div>
-        </div>
+  <div class="add-loc-container">
+    <div class="ion-padding">
+      <!-- Header -->
+      <div class="header">
+        <ion-buttons slot="start">
+          <ion-back-button text="Weather" default-href="/tabs/home"></ion-back-button>
+        </ion-buttons>
+        <ion-buttons slot="end">
+          <ion-button (click)="toggleSelectionMode()">
+            <ion-icon slot="icon-only" name="ellipsis-horizontal"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+        <!-- Show Delete Button in Selection Mode -->
+        <ion-button *ngIf="selectionMode" (click)="deleteSelected()" color="danger">
+          Delete Selected
+        </ion-button>
       </div>
-    </ion-tab>
 
-    <!-- Bottom tab bar -->
-    <ion-tab-bar slot="bottom">
-      <ion-tab-button tab="home" [routerLink]="['/home']">
-        <ion-icon name="location-outline"></ion-icon>
-      </ion-tab-button>
-      <ion-tab-button tab="add-location" [routerLink]="['/add-location']">
-        <ion-icon name="add-circle-outline"></ion-icon>
-      </ion-tab-button>
-      <ion-tab-button tab="settings" [routerLink]="['/settings']">
-        <ion-icon name="settings"></ion-icon>
-      </ion-tab-button>
-    </ion-tab-bar>
-  </ion-tabs>
+      <!-- Search bar -->
+      <ion-searchbar [debounce]="1000"
+        placeholder="Search or Add a City"
+        class="custom-searchbar"
+        [(ngModel)]="searchQuery"
+        (ionInput)="searchLocation($event)"
+        (ionClear)="clearSearch()">
+      </ion-searchbar>
+
+      <!-- Weather location cards -->
+      <div class="weather-cards">
+        <!-- Search results display -->
+        <div *ngIf="showingSearchResults" class="location-card">
+          <!-- New location result (with Add button) -->
+          <ion-card *ngIf="searchedLocation" class="location-card">
+            <ion-card-content class="search-content">
+              <div class="location-info">
+                <h2>{{ searchedLocation.name }}, {{ searchedLocation.country }}</h2>
+                <ion-button size="small" color="dark" (click)="addLocation()" class="addBtn">Add</ion-button>
+              </div>
+            </ion-card-content>
+          </ion-card>
+
+          <!-- Existing locations that match search -->
+          <ion-card *ngIf="filteredLocations.length > 0" class="location-cards-container">
+            <ion-item *ngFor="let location of filteredLocations" class="location-item" (click)="openLocationDetails(location)">
+              <ion-label>
+                <div class="location-info">
+                  <div class="location-name">
+                    <h2 class="fw-bold">{{ location.isCurrentLocation ? 'My Location' : location.name }}</h2>
+                    <p>{{ location.country }}</p>
+                  </div>
+                  <div class="temperature">
+                    <span class="temp-value">{{ formatTemp(location.temp) }}</span>
+                  </div>
+                </div>
+                <div class="high-low">
+                  <span>H: {{ formatTemp(location.high) }} L: {{ formatTemp(location.low) }}</span>
+                </div>
+              </ion-label>
+            </ion-item>
+          </ion-card>
+
+          <!-- No results message -->
+          <ion-card *ngIf="!searchedLocation && filteredLocations.length === 0 && !isLoading && showingSearchResults" class="location-card">
+            <ion-card-content>
+              <p>{{ errorMessage || 'No locations found' }}</p>
+            </ion-card-content>
+          </ion-card>
+        </div>
+
+        <!-- Regular location list (when not searching) -->
+        <ion-card *ngIf="!showingSearchResults" class="location-cards-container">
+          <!-- Current location first -->
+          <ion-item-sliding *ngIf="currentLocation" #currentSliding class="location-card-wrapper">
+            <ion-item class="location-item" (click)="openLocationDetails(currentLocation)">
+              <ion-label>
+                <div class="location-info">
+                  <div class="location-name">
+                    <h2 class="fw-bold">My Location</h2>
+                    <h3>{{ currentLocation.name }}</h3>
+                    <p>{{ currentLocation.country }}</p>
+                  </div>
+                  <div class="temperature">
+                    <span class="temp-value">{{ formatTemp(currentLocation.temp) }}</span>
+                  </div>
+                </div>
+                <div class="high-low">
+                  <span>H: {{ formatTemp(currentLocation.high) }} L: {{ formatTemp(currentLocation.low) }}</span>
+                </div>
+              </ion-label>
+            </ion-item>
+          </ion-item-sliding>
+
+          <!-- Saved locations -->
+          <ion-item-sliding *ngFor="let location of savedLocations; let i = index" #slidingItem class="location-card-wrapper">
+            <ion-item class="location-item" (click)="openLocationDetails(location)">
+              <ion-label>
+                <div class="location-info">
+                  <div class="location-name">
+                    <h2 class="fw-bold">{{ location.name }}</h2>
+                    <p>{{ location.country }}</p>
+                  </div>
+                  <div class="temperature">
+                    <span class="temp-value">{{ formatTemp(location.temp) }}</span>
+                  </div>
+                </div>
+                <div class="high-low">
+                  <span>H: {{ formatTemp(location.high) }} L: {{ formatTemp(location.low) }}</span>
+                </div>
+              </ion-label>
+            </ion-item>
+
+            <!-- Delete option for saved locations -->
+            <ion-item-options side="end">
+              <ion-item-option color="danger" (click)="deleteLocation(i, slidingItem)">
+                <ion-icon slot="start" name="trash-outline"></ion-icon>
+                Delete
+              </ion-item-option>
+            </ion-item-options>
+          </ion-item-sliding>
+        </ion-card>
+      </div>
+    </div>
+  </div>
 </ion-content>

@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 *{
-  color: black;
+  color: #333333;
   font-family: "Poppins", sans-serif;
 }
 
@@ -27,13 +27,15 @@ ion-back-button::part(text) {
 /* Search bar styles */
 
 .custom-searchbar {
-  --background: #e4e4e4;
+  --background-color: #e4e4e4;
   --border-radius: 12px;
-  --box-shadow: none;
   --placeholder-color: black;
   --height: 48px;
   padding: 0;
   margin-bottom: 16px;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.1),
+            -4px -4px 10px rgba(255, 255, 255, 0.7);
+
 }
 
 /* Weather cards styles */
@@ -55,9 +57,7 @@ ion-back-button::part(text) {
 ion-label {
   padding: 16px;
 }
-ion-card{
-  box-shadow: none;
-}
+
 .location-info {
   display: flex;
   justify-content: space-between;

@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-
+import { SettingsService  } from '../services/settings.service';
+import { Storage } from '@ionic/storage-angular';
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
@@ -8,27 +9,65 @@ import { Component, OnInit } from '@angular/core';
 })
 export class SettingsPage implements OnInit {
   isDarkMode: boolean = false;
+  temperatureUnit: 'celsius' | 'fahrenheit' = 'celsius';
 
-  constructor() { }
+  constructor(private settingsService: SettingsService, private storage: Storage) { this.initStorage(); }
 
-  ngOnInit() {
-    // Check for saved theme preference
-    const savedTheme = localStorage.getItem('theme');
-    this.isDarkMode = savedTheme === 'dark';
-
-    // Apply the saved theme
-    document.body.setAttribute('color-theme', savedTheme || 'light');
+  async initStorage() {
+    await this.storage.create();
   }
 
-  toggleTheme(event: any) {
+  async ngOnInit() {
+    const savedTheme = await this.storage.get('theme') || 'light';
+    this.isDarkMode = savedTheme === 'dark';
+    document.body.setAttribute('color-theme', savedTheme);
+
+    const savedTempUnit = await this.storage.get('temperatureUnit') || 'celsius';
+    this.temperatureUnit = savedTempUnit as 'celsius' | 'fahrenheit';
+    this.settingsService.updateSettings({
+      darkMode: this.isDarkMode,
+      temperatureUnit: this.temperatureUnit
+    });
+
+    this.settingsService.settings$.subscribe(settings => {
+      this.isDarkMode = settings.darkMode;
+      this.temperatureUnit = settings.temperatureUnit;
+    });
+  }
+
+
+  async ionViewWillEnter() {
+    const currentTheme = await this.storage.get('theme') || 'light';
+    this.isDarkMode = currentTheme === 'dark';
+
+    const currentTempUnit = await this.storage.get('temperatureUnit') || 'celsius';
+    this.temperatureUnit = currentTempUnit as 'celsius' | 'fahrenheit';
+  }
+
+  async toggleTheme(event: any) {
     const isChecked = event.detail.checked;
     const theme = isChecked ? 'dark' : 'light';
-
-    // Apply theme
+    this.settingsService.updateSettings({ darkMode: isChecked });
     document.body.setAttribute('color-theme', theme);
 
-    // Save preference
-    localStorage.setItem('theme', theme);
+    await this.storage.set('theme', theme);
     this.isDarkMode = isChecked;
+  }
+
+  async toggleTemperatureUnit(event: any) {
+    const useCelsius = event.detail.checked;
+    const temperatureUnit = useCelsius ? 'celsius' : 'fahrenheit';
+    this.settingsService.updateSettings({ temperatureUnit });
+
+    await this.storage.set('temperatureUnit', temperatureUnit);
+  }
+
+  async temperatureUnitChanged(event: any) {
+    const selectedValue = event.detail.value;
+    if (selectedValue === 'celsius' || selectedValue === 'fahrenheit') {
+      this.settingsService.updateSettings({ temperatureUnit: selectedValue });
+
+      await this.storage.set('temperatureUnit', selectedValue);
+    }
   }
 }

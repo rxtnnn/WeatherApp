@@ -1,42 +1,33 @@
 // Ionic Variables and Theming. For more info, please see:
 /* Dark Mode Theme */
 body[color-theme="dark"] {
-  /* Primary colors */
-
   --ion-color-primary: #428cff;
   --ion-color-primary-rgb: 66, 140, 255;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
   --ion-color-primary-shade: #3a7be0;
   --ion-color-primary-tint: #5598ff;
-  /* Background colors */
-  --ion-background-color: #1d1c1c;
+  --ion-background-color: #252525;
   --ion-background-color-rgb: 0, 0, 0;
-
-  /* Text colors */
   --ion-color-rgb: 255, 255, 255;
-
-  /* Card and Item backgrounds */
   --ion-card-background: #121212;
   --ion-item-background: #121212;
-
-  /* Border color */
   --ion-border-color: #222222;
-
-  /* Toolbar and tab bar */
   --ion-toolbar-background: #0a0a0a;
   --ion-tab-bar-background: transparent;
   --ion-tab-bar-border-color: transparent;
-  /* Custom accent colors */
   --ion-color-accent: #8a4dff;
   --ion-color-accent-rgb: 138, 77, 255;
   --ion-color-accent-contrast: #ffffff;
   --ion-color-accent-shade: #7943e0;
   --ion-color-accent-tint: #9665ff;
-
-  /* Custom settings for content areas */
   --settings-border-color: #8a4dff;
   --settings-card-background: #121212;
+  --ion-text-color: #ffffff;
+  --ion-text-color-rgb: 255, 255, 255;
+  --ion-tab-bar-background: #000000;
+  --ion-tab-bar-border-color: none;
+
   *{
     color: white !important;
   }
@@ -46,7 +37,6 @@ body[color-theme="dark"] {
     box-shadow: none;
   }
 
-  /* Tab button colors */
   ion-tab-button {
     --color-selected: #ffffff;
     --background: transparent;
@@ -54,12 +44,10 @@ body[color-theme="dark"] {
     --ripple-color: transparent;
   }
 
-  /* Tab selected state */
   ion-tab-button.tab-selected {
     --color: #ffffff;
   }
 
-  /* Tab icons */
   ion-tab-button ion-icon {
     --ionicon-stroke-width: 40px;
     font-size: 24px;
@@ -68,108 +56,50 @@ body[color-theme="dark"] {
   .time, .icon-weather, .temperature{
     color: black !important;
   }
-  ion-searchbar.input{
-    color: black !important;
+  .custom-searchbar{
+    --ion-background-color: white;
+    box-shadow: none;
+    --color: black !important;
   }
-}
-
-/* Apply custom styles to specific components in dark mode */
 
 
-body[color-theme="dark"] ion-card {
-  background: var(--settings-card-background);
-}
-
-body[color-theme="dark"] {
-  /* Text colors */
-  --ion-text-color: #ffffff;
-  --ion-text-color-rgb: 255, 255, 255;
-
-
-  /* Settings page items */
   .settings-item ion-label {
     color: #ffffff !important;
   }
 
-  /* Toggle text color */
   ion-toggle {
     --background: #333333;
     --background-checked: var(--ion-color-dark);
   }
 
-  /* Radio button labels */
   ion-radio-group ion-label {
     color: #ffffff !important;
   }
 
-  /* Card background color */
   ion-card {
     --background: #1e1e1e;
+    box-shadow: none;
   }
 
   ion-tab-button{
     --background: #1e1e1e;
   }
-}
-body[color-theme="dark"] {
-  /* Tab bar background */
-  --ion-tab-bar-background: #000000;
-  --ion-tab-bar-border-color: none;
 
-  /* Tab button colors */
   ion-tab-bar {
-    background: #000000;
+    background: #1d1c1c;
     border-top: 1px solid #333333;
+    border: none;
   }
 
   ion-tab-button {
     --color: white;
     --color-selected: #ffffff;
+    background-color: #1d1c1c;
   }
-
-  /* Active tab indicator */
-  ion-tab-button.tab-selected {
-    --color: #ffffff;
-
-    /* Custom bottom indicator */
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 10%;
-      width: 80%;
-      height: 3px;
-      background: var(--ion-color-primary, #428cff);
-      border-radius: 3px 3px 0 0;
-      background-color: #121212;
-      border: none;
-    }
-  }
-
 }
 
-/* Custom accent color class you can use */
-.ion-color-accent {
-  --ion-color-base: var(--ion-color-accent);
-  --ion-color-base-rgb: var(--ion-color-accent-rgb);
-  --ion-color-contrast: var(--ion-color-accent-contrast);
-  --ion-color-contrast-rgb: var(--ion-color-accent-contrast-rgb);
-  --ion-color-shade: var(--ion-color-accent-shade);
-  --ion-color-tint: var(--ion-color-accent-tint);
+body[color-theme="light"] ion-content.settings-page,
+body[color-theme="light"] ion-content.home,
+body[color-theme="light"] ion-content.addloc {
+  --ion-background-color: #F5F5F5 ;
 }
-
-
-  /* Then add your specific component styling */
-  body[color-theme="light"] ion-content.settings-page,
-  body[color-theme="light"] ion-content.home,
-  body[color-theme="light"] ion-content.addloc {
-    --background: linear-gradient(
-      to bottom,
-      #a7c9ff 0%,
-      #c1deff 25%,
-      #d7e9ff 50%,
-      #edf4ff 75%,
-      #f8fbff 100%
-    );
-  }
-

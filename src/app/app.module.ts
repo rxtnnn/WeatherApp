@@ -19,11 +19,11 @@ import { WeatherService } from './services/weather.service';
     AppRoutingModule,
     HttpClientModule,
     FormsModule,
-    IonicStorageModule.forRoot(), // Initializes storage
+    IonicStorageModule.forRoot(),
   ],
   providers: [
-    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }, WeatherService // Correct reuse strategy for Ionic
+    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }, WeatherService
   ],
-  bootstrap: [AppComponent], // Bootstraps the main app component
+  bootstrap: [AppComponent],
 })
 export class AppModule {}

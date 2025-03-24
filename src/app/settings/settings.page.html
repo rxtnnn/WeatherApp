@@ -1,56 +1,40 @@
 <ion-content class="settings-page">
-  <ion-tabs>
+  <div class="ion-padding">
+    <div class="header">
+      <ion-buttons>
+        <ion-back-button text="Settings" default-href="/tabs/home"></ion-back-button>
+      </ion-buttons>
+    </div>
 
-    <ion-tab tab="settings">
-      <div class="ion-padding">
-      <div class="header">
-        <ion-buttons>
-          <ion-back-button text="Settings" default-href="#"></ion-back-button>
-        </ion-buttons>
-      </div>
+    <!-- Appearance Section -->
+    <div class="settings-section">
+      <h1 class="fw-bold">Appearance</h1>
 
-      <!-- Appearance Section -->
-      <div class="settings-section">
-        <h1 class="fw-bold">Appearance</h1>
+      <ion-card class="appearance">
+        <ion-card-content class="settings-item">
+          <ion-label>Dark mode</ion-label>
+          <ion-toggle slot="end" [checked]="isDarkMode" (ionChange)="toggleTheme($event)"></ion-toggle>
+        </ion-card-content>
+      </ion-card>
+    </div>
 
-        <ion-card class="appearance">
+    <!-- Temperature Scales Section -->
+    <div class="settings-section">
+      <h1 class="fw-bold">Temperature Unit</h1>
+
+      <ion-card class="temp-scales">
+        <ion-radio-group [value]="temperatureUnit" (ionChange)="temperatureUnitChanged($event)">
           <ion-card-content class="settings-item">
-            <ion-label>Dark mode</ion-label>
-            <ion-toggle slot="end" (ionChange)="toggleTheme($event)"></ion-toggle>
+            <ion-label>Celsius</ion-label>
+            <ion-radio slot="end" value="celsius"></ion-radio>
           </ion-card-content>
-        </ion-card>
-      </div>
-
-      <!-- Temperature Scales Section [value]="temperatureScale" (ionChange)="changeTemperatureScale($event)" -->
-      <div class="settings-section">
-        <h1 class="fw-bold">Temperature Scales</h1>
-
-        <ion-card class="temp-scales">
-            <ion-radio-group >
-              <ion-card-content class="settings-item">
-                <ion-label>Celsius</ion-label>
-                <ion-radio slot="end" value="celsius"></ion-radio>
-              </ion-card-content>
-              <hr>
-              <ion-card-content class="settings-item">
-                <ion-label>Fahrenheit</ion-label>
-                <ion-radio slot="end" value="fahrenheit"></ion-radio>
-              </ion-card-content>
-            </ion-radio-group>
-        </ion-card>
-      </div>
-      </div>
-    </ion-tab>
-    <ion-tab-bar slot="bottom">
-        <ion-tab-button tab="home" [routerLink]="['/home']">
-          <ion-icon name="location-outline"></ion-icon>
-        </ion-tab-button>
-        <ion-tab-button tab="add-location" [routerLink]="['/add-location']">
-          <ion-icon name="add-circle-outline"></ion-icon>
-        </ion-tab-button>
-        <ion-tab-button tab="settings" [routerLink]="['/settings']">
-          <ion-icon name="settings"></ion-icon>
-        </ion-tab-button>
-    </ion-tab-bar>
-  </ion-tabs>
+          <hr>
+          <ion-card-content class="settings-item">
+            <ion-label>Fahrenheit</ion-label>
+            <ion-radio slot="end" value="fahrenheit"></ion-radio>
+          </ion-card-content>
+        </ion-radio-group>
+      </ion-card>
+    </div>
+  </div>
 </ion-content>

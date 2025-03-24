@@ -2,8 +2,9 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment.prod';
-import { Observable, BehaviorSubject, of, throwError, catchError, shareReplay, tap, map } from 'rxjs';
-
+import { Storage } from '@ionic/storage-angular';
+import { Observable, BehaviorSubject, of, throwError } from 'rxjs';
+import { catchError, shareReplay, tap, map } from 'rxjs/operators'
 
 @Injectable({
   providedIn: 'root',
@@ -11,36 +12,32 @@ import { Observable, BehaviorSubject, of, throwError, catchError, shareReplay, t
 export class WeatherService implements OnDestroy {
   private apiKey = environment.weatherApiKey;
 
-  // Cache for forecast data to avoid redundant API calls
-  private forecastCache: { [key: string]: { data: any, timestamp: number } } = {};
-  private weatherCache: { [key: string]: { data: any, timestamp: number } } = {};
+  private readonly CACHE_TIMEOUT = 10 * 60 * 1000; // 10 minutes cache time
 
-  // Tracks loading state
   private loadingSubject = new BehaviorSubject<boolean>(false);
   public loading$ = this.loadingSubject.asObservable();
 
-  // Cache timeout in milliseconds (10 minutes)
-  private readonly CACHE_TIMEOUT = 10 * 60 * 1000;
-  // Stores selected location
   private selectedLocationSubject = new BehaviorSubject<{ latitude: number, longitude: number, city?: string } | null>(null);
   public selectedLocation$ = this.selectedLocationSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private storage: Storage) {
+    this.initStorage(); // ✅ Initialize Storage
+  }
+
+  async initStorage() {
+    await this.storage.create();
+  }
 
   ngOnDestroy() {
     this.loadingSubject.complete();
     this.selectedLocationSubject.complete();
   }
 
-  /**
-   * Gets current device location
-   */
   async getCurrentLocation(): Promise<{ latitude: number; longitude: number }> {
     try {
       this.loadingSubject.next(true);
       const coordinates = await Geolocation.getCurrentPosition();
-      const { latitude, longitude } = coordinates.coords;
-      return { latitude, longitude };
+      return { latitude: coordinates.coords.latitude, longitude: coordinates.coords.longitude };
     } catch (error) {
       console.error('Error getting location:', error);
       throw error;
@@ -48,136 +45,80 @@ export class WeatherService implements OnDestroy {
       this.loadingSubject.next(false);
     }
   }
+
   setSelectedLocation(latitude: number, longitude: number, city?: string) {
     const location = { latitude, longitude, city };
     this.selectedLocationSubject.next(location);
-    localStorage.setItem('selectedLocation', JSON.stringify(location)); // Save to local storage
+    this.storage.set('selectedLocation', location); // ✅ Save to Storage
   }
 
-  /**
-   * Loads stored location from local storage
-   */
-  loadStoredLocation() {
-    const storedLocation = localStorage.getItem('selectedLocation');
+  async loadStoredLocation() {
+    const storedLocation = await this.storage.get('selectedLocation');
     if (storedLocation) {
-      this.selectedLocationSubject.next(JSON.parse(storedLocation));
+      this.selectedLocationSubject.next(storedLocation);
     }
   }
 
-
-  /**
-   * Gets city name from coordinates using OpenStreetMap
-   */
    getCityName(latitude: number, longitude: number): Observable<any> {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
-
-    return this.http.get<any>(url).pipe(
-      catchError(error => {
-        console.error('Error fetching city name:', error);
-        return throwError(() => new Error('Failed to get city name.'));
-      })
-    );
+    return this.http.get<any>(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+      .pipe(
+        catchError(error => {
+          console.error('Error fetching city name:', error);
+          return throwError(() => new Error('Failed to get city name.'));
+        })
+      );
+  }
+  private fetchDataWithCache(endpoint: string, cacheKey: string): Observable<any> {
+    return new Observable(observer => {
+      this.storage.get(cacheKey).then((cachedData) => {
+        const now = Date.now();
+        if (cachedData && (now - cachedData.timestamp) < this.CACHE_TIMEOUT) {
+          console.log(`🟢 Using cached data for ${cacheKey}`);
+          observer.next(cachedData.data);
+          observer.complete();
+        } else {
+          console.log(`🔄 Fetching new data for ${cacheKey}`);
+          this.http.get<any>(endpoint).pipe(
+            tap(data => this.storage.set(cacheKey, { data, timestamp: Date.now() })), // ✅ Store new data in Storage
+            catchError(error => {
+              console.error(`Error fetching ${cacheKey}. Using cached data if available.`, error);
+              return cachedData ? of(cachedData.data) : throwError(() => new Error('No offline data available'));
+            })
+          ).subscribe(observer);
+        }
+      });
+    }).pipe(shareReplay(1));
   }
 
-  /**
-   * Gets current weather data
-   */
   getWeatherData(latitude: number, longitude: number): Observable<any> {
-    const cacheKey = `weather_${latitude}_${longitude}`;
-    const cachedData = this.weatherCache[cacheKey];
-
-    if (cachedData && (Date.now() - cachedData.timestamp) < this.CACHE_TIMEOUT) {
-      return of(cachedData.data);
-    }
-
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-
-    return this.http.get<any>(url).pipe(
-      tap(data => {
-        this.weatherCache[cacheKey] = { data, timestamp: Date.now() };
-      }),
-      catchError(error => {
-        console.error('Error fetching weather data:', error);
-        return throwError(() => new Error('Failed to get weather data.'));
-      }),
-      shareReplay(1)
-    );
+    return this.fetchDataWithCache(url, `weather_${latitude}_${longitude}`);
   }
 
-  /**
-   * Gets forecast data with caching
-   */
-  private getForecastData(latitude: number, longitude: number): Observable<any> {
-    const cacheKey = `forecast_${latitude}_${longitude}`;
-    const cachedData = this.forecastCache[cacheKey];
-
-    // Return cached data if it exists and is still valid
-    if (cachedData && (Date.now() - cachedData.timestamp) < this.CACHE_TIMEOUT) {
-      return of(cachedData.data);
-    }
-
-    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-
-    this.loadingSubject.next(true);
-    return this.http.get<any>(url).pipe(
-      tap(data => {
-        // Cache the result
-        this.forecastCache[cacheKey] = {
-          data,
-          timestamp: Date.now()
-        };
-        this.loadingSubject.next(false);
-      }),
-      catchError(error => {
-        this.loadingSubject.next(false);
-        console.error('Error fetching forecast data:', error);
-        return throwError(() => new Error('Failed to get forecast data. Please try again.'));
-      }),
-      shareReplay(1)
-    );
-  }
-
-  /**
-   * Gets hourly forecast data
-   */
-  getHourlyWeather(latitude: number, longitude: number): Observable<any> {
-    return this.getForecastData(latitude, longitude).pipe(
-      map(data => {
-        return {
-          ...data,
-          list: data.list.slice(0, 24) // Just return the first 24 hours
-        };
-      })
-    );
-  }
-
-  /**
-   * Gets daily forecast data
-   */
   getWeeklyWeather(latitude: number, longitude: number): Observable<any> {
-    return this.getForecastData(latitude, longitude);
+    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
+    return this.fetchDataWithCache(url, `weekly_forecast_${latitude}_${longitude}`);
   }
 
-  /**
-   * Gets precipitation data
-   */
+  getHourlyWeather(latitude: number, longitude: number): Observable<any> {
+    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
+    return this.fetchDataWithCache(url, `hourly_forecast_${latitude}_${longitude}`).pipe(
+      map(data => ({
+        ...data,
+        list: data.list.slice(0, 24) // Get first 24 hours
+      }))
+    );
+  }
+
   getPrecipitationData(latitude: number, longitude: number): Observable<any> {
-    return this.getForecastData(latitude, longitude);
+    return this.getWeeklyWeather(latitude, longitude);
   }
 
-  /**
-   * Gets visibility data
-   */
   getVisibilityData(latitude: number, longitude: number): Observable<any> {
     return this.getWeatherData(latitude, longitude);
   }
 
-  /**
-   * Clears service caches
-   */
-  clearCache() {
-    this.forecastCache = {};
-    this.weatherCache = {};
+  async clearCache() {
+    await this.storage.clear();
   }
-
 }

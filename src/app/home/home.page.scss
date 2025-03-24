@@ -2,7 +2,7 @@
 
 *{
   font-family: "Poppins", sans-serif;
-  color: black;
+  color: #333333;
   padding: 0;
   margin: 0;
 
@@ -15,6 +15,7 @@
   min-height: 100vh;
 
 }
+
 .weather-location-container {
   display: flex;
   flex-direction: column;
@@ -86,7 +87,8 @@
   opacity: 0.7;
 }
 .hourly-list{
-  margin: 1rem 3rem 0 3rem;
+  margin: 2rem 1rem 0 1rem;
+  padding:0;
   background-color: rgba(255, 255, 255, 0.5);
   border-radius: 16px;
 }
@@ -110,7 +112,9 @@ ion-card-subtitle {
   margin: 0;
 }
 ion-card{
-  box-shadow: none;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.1),
+            -4px -4px 10px rgba(255, 255, 255, 0.7);
+
 }
 
 .scroll-container {
@@ -156,8 +160,9 @@ ion-card{
   align-items: center;
   margin-bottom: 12px;
 
-  ion-icon {
-    font-size: 1.5rem;
+  .weekly-icon {
+    height: 10px;
+    width: 10px;
     color: #4c8dff;
     margin-bottom: 4px;
   }
@@ -199,19 +204,19 @@ hr{
   font-size: 1rem;
 }
 .weekly-list{
-  margin: 1rem 3rem 0 3rem;
+  margin: 2rem 1rem 0 1rem;
   padding: 1rem;
   background-color: rgba(255, 255, 255, 0.5);
   border-radius: 16px;
 }
 
 .weather-container {
-  margin: 1rem 2rem 10rem 2rem;
+  margin: 1rem 1rem 5rem 1rem;
   display: flex;
 
 }
 .weather-grid ion-col{
-  padding: .8rem;
+  padding: .5rem;
 }
 .weather-card {
   flex: 1;
@@ -249,7 +254,7 @@ hr{
   font-weight: 500;
 }
 ion-card-content {
-  padding: 20px;
+  padding: 10px;
 }
 .condition-icon{
   opacity: 0.5;

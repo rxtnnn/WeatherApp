@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 *{
-  color: black;
+  color: #333333;
   font-family: "Poppins", sans-serif;
 
 }
@@ -50,8 +50,9 @@ ion-back-button::part(text) {
 ion-card{
   background-color: white;
   border-radius: .5rem;
-  box-shadow: rgba(209, 208, 208, 0.5);
-  box-shadow: none;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.1),
+            -4px -4px 10px rgba(255, 255, 255, 0.7);
+
 }
 ion-card-content {
   margin-bottom: 0;
