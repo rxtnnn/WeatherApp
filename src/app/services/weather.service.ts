@@ -4,14 +4,14 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment.prod';
 import { Storage } from '@ionic/storage-angular';
 import { Observable, BehaviorSubject, of, throwError } from 'rxjs';
-import { catchError, shareReplay, tap, map } from 'rxjs/operators'
+import { catchError, shareReplay, tap, map } from 'rxjs/operators';
+import { SettingsService } from './settings.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class WeatherService implements OnDestroy {
   private apiKey = environment.weatherApiKey;
-
   private readonly CACHE_TIMEOUT = 10 * 60 * 1000; // 10 minutes cache time
 
   private loadingSubject = new BehaviorSubject<boolean>(false);
@@ -20,8 +20,15 @@ export class WeatherService implements OnDestroy {
   private selectedLocationSubject = new BehaviorSubject<{ latitude: number, longitude: number, city?: string } | null>(null);
   public selectedLocation$ = this.selectedLocationSubject.asObservable();
 
-  constructor(private http: HttpClient, private storage: Storage) {
-    this.initStorage(); // ✅ Initialize Storage
+  // ✅ High and Low Pressure Subjects
+  private highPressureSubject = new BehaviorSubject<number>(0);
+  public highPressure$ = this.highPressureSubject.asObservable();
+
+  private lowPressureSubject = new BehaviorSubject<number>(0);
+  public lowPressure$ = this.lowPressureSubject.asObservable();
+
+  constructor(private http: HttpClient, private storage: Storage, private settingsService: SettingsService) {
+    this.initStorage();
   }
 
   async initStorage() {
@@ -47,10 +54,13 @@ export class WeatherService implements OnDestroy {
   }
 
   setSelectedLocation(latitude: number, longitude: number, city?: string) {
+    console.log(`Setting new location: ${latitude}, ${longitude}, City: ${city}`); // ✅ Debugging
+
     const location = { latitude, longitude, city };
     this.selectedLocationSubject.next(location);
-    this.storage.set('selectedLocation', location); // ✅ Save to Storage
+    this.storage.set('selectedLocation', location);
   }
+
 
   async loadStoredLocation() {
     const storedLocation = await this.storage.get('selectedLocation');
@@ -59,7 +69,7 @@ export class WeatherService implements OnDestroy {
     }
   }
 
-   getCityName(latitude: number, longitude: number): Observable<any> {
+  getCityName(latitude: number, longitude: number): Observable<any> {
     return this.http.get<any>(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
       .pipe(
         catchError(error => {
@@ -68,6 +78,7 @@ export class WeatherService implements OnDestroy {
         })
       );
   }
+
   private fetchDataWithCache(endpoint: string, cacheKey: string): Observable<any> {
     return new Observable(observer => {
       this.storage.get(cacheKey).then((cachedData) => {
@@ -79,7 +90,7 @@ export class WeatherService implements OnDestroy {
         } else {
           console.log(`🔄 Fetching new data for ${cacheKey}`);
           this.http.get<any>(endpoint).pipe(
-            tap(data => this.storage.set(cacheKey, { data, timestamp: Date.now() })), // ✅ Store new data in Storage
+            tap(data => this.storage.set(cacheKey, { data, timestamp: Date.now() })),
             catchError(error => {
               console.error(`Error fetching ${cacheKey}. Using cached data if available.`, error);
               return cachedData ? of(cachedData.data) : throwError(() => new Error('No offline data available'));
@@ -89,10 +100,23 @@ export class WeatherService implements OnDestroy {
       });
     }).pipe(shareReplay(1));
   }
-
   getWeatherData(latitude: number, longitude: number): Observable<any> {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-    return this.fetchDataWithCache(url, `weather_${latitude}_${longitude}`);
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}&nocache=${Date.now()}`;
+
+    console.log(`Fetching weather data for: ${latitude}, ${longitude}`); // ✅ Debugging
+
+    return this.http.get<any>(url).pipe(
+      tap(data => {
+        console.log('Weather API Response:', data); // ✅ Check if API returns correct data
+        if (data && data.main) {
+          this.updatePressureValues(data);
+        }
+      }),
+      catchError(error => {
+        console.error(`Error fetching weather data for ${latitude}, ${longitude}:`, error);
+        return throwError(() => new Error('Failed to fetch weather data.'));
+      })
+    );
   }
 
   getWeeklyWeather(latitude: number, longitude: number): Observable<any> {
@@ -102,12 +126,8 @@ export class WeatherService implements OnDestroy {
 
   getHourlyWeather(latitude: number, longitude: number): Observable<any> {
     const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-    return this.fetchDataWithCache(url, `hourly_forecast_${latitude}_${longitude}`).pipe(
-      map(data => ({
-        ...data,
-        list: data.list.slice(0, 24) // Get first 24 hours
-      }))
-    );
+    const cacheKey = `weather_${latitude.toFixed(6)}_${longitude.toFixed(6)}`;
+    return this.fetchDataWithCache(url, cacheKey);
   }
 
   getPrecipitationData(latitude: number, longitude: number): Observable<any> {
@@ -116,6 +136,45 @@ export class WeatherService implements OnDestroy {
 
   getVisibilityData(latitude: number, longitude: number): Observable<any> {
     return this.getWeatherData(latitude, longitude);
+  }
+
+  updatePressureValues(data: any) {
+    if (!data || !data.main) return;
+
+    const temp = data.main.temp;
+    const pressure = data.main.pressure;
+
+    console.log(`Updating Pressure - Temp: ${temp}, Pressure: ${pressure}`); // ✅ Debugging
+
+    const referencePressure = 1013;
+    const temperatureDifference = (pressure - referencePressure) * 0.12;
+
+    const high = Math.round(temp + temperatureDifference);
+    const low = Math.round(temp - temperatureDifference);
+
+    console.log(`High Pressure: ${high}, Low Pressure: ${low}`); // ✅ Debugging
+
+    this.highPressureSubject.next(high);
+    this.lowPressureSubject.next(low);
+  }
+
+
+  async loadStoredPressure() {
+    const highPressure = await this.storage.get('highPressure');
+    const lowPressure = await this.storage.get('lowPressure');
+
+    if (highPressure !== null && lowPressure !== null) {
+      this.settingsService.settings$.subscribe(settings => {
+        const convertedHigh = this.settingsService.convertTemperature(highPressure, settings.temperatureUnit);
+        const convertedLow = this.settingsService.convertTemperature(lowPressure, settings.temperatureUnit);
+
+        this.highPressureSubject.next(convertedHigh);
+        this.lowPressureSubject.next(convertedLow);
+
+        this.storage.set('highPressure',  settings.temperatureUnit);
+        this.storage.set('lowPressure',  settings.temperatureUnit);
+      });
+    }
   }
 
   async clearCache() {

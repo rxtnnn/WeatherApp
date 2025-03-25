@@ -28,7 +28,6 @@ interface Location {
   standalone: false,
 })
 export class AddLocationPage implements OnInit, OnDestroy {
-  // Search properties
   searchQuery = '';
   searchedLocation: Location | null = null;
   filteredLocations: Location[] = [];
@@ -59,6 +58,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
       this.savedLocations = [...this.savedLocations];
       this.currentLocation = { ...this.currentLocation };
     });
+
   }
 
   ngOnDestroy() {
@@ -164,9 +164,6 @@ export class AddLocationPage implements OnInit, OnDestroy {
       Math.abs(saved.lat - location.lat) < 0.01 && Math.abs(saved.lon - location.lon) < 0.01);
   }
 
-  /**
-   * Clears search results
-   */
   clearSearch() {
     this.searchQuery = '';
     this.searchedLocation = null;
@@ -176,15 +173,24 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
   private fetchWeatherData(location: Location) {
     this.isLoading = true;
+
     this.weatherService.getWeatherData(location.lat, location.lon).pipe(takeUntil(this.destroy$)).subscribe({
       next: async (data) => {
-        const locationWithWeather: Location = { ...location, temp: Math.round(data.main.temp), high: Math.round(data.main.temp_max), low: Math.round(data.main.temp_min) };
+        const temp = Math.round(data.main.temp);
+
+        // ✅ Fetch high & low pressure from WeatherService
+        this.weatherService.highPressure$.subscribe(high => location.high = high);
+        this.weatherService.lowPressure$.subscribe(low => location.low = low);
+
+        location.temp = temp;
+
         if (location.isCurrentLocation) {
-          this.currentLocation = locationWithWeather;
+          this.currentLocation = { ...location };
         } else {
-          this.savedLocations.push(locationWithWeather);
+          this.savedLocations = [...this.savedLocations, location];
           await this.saveToStorage();
         }
+
         this.isLoading = false;
       },
       error: () => {
@@ -196,64 +202,69 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
 
   openLocationDetails(location: Location) {
-    // Only navigate if not in selection mode
     if (!this.selectionMode) {
-      // Get fresh weather data before setting as selected location
       this.weatherService.getWeatherData(location.lat, location.lon)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (data) => {
-            // Now set as selected with fresh data
             this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
             this.router.navigateByUrl('/home');
           },
           error: (error) => {
-            // Still navigate, but there might be inconsistencies
             console.error('Error updating weather before navigation:', error);
             this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
             this.router.navigateByUrl('/home');
           }
         });
     } else {
-      // Toggle selection
       location.selected = !location.selected;
     }
   }
 
   async refreshSavedLocations() {
-    if (this.savedLocations.length === 0) return;
-    this.savedLocations.forEach((location) => {
-      this.weatherService.getWeatherData(location.lat, location.lon).pipe(takeUntil(this.destroy$)).subscribe({
-        next: async (data) => {
-          location.temp = Math.round(data.main.temp);
-          location.high = Math.round(data.main.temp_max);
-          location.low = Math.round(data.main.temp_min);
-          await this.saveToStorage();
-        },
-        error: () => {},
+    const lastUpdated = await this.storage.get('lastUpdated');
+    const now = Date.now();
+
+    // Only fetch new data if it's been more than 10 minutes
+    if (lastUpdated && now - lastUpdated < 600000) { // 600000ms = 10 mins
+      const storedLocations = await this.storage.get('savedLocations');
+      if (storedLocations) {
+        this.savedLocations = storedLocations;
+      }
+      return;
+    }
+
+    this.savedLocations.forEach(location => {
+      this.weatherService.getWeatherData(location.lat, location.lon).subscribe(data => {
+        location.temp = Math.round(data.main.temp);
+        location.high = Math.round(data.main.temp_max);
+        location.low = Math.round(data.main.temp_min);
+        this.saveToStorage(); // Save updated data
       });
     });
+
+    await this.storage.set('lastUpdated', now);
   }
+
 
   async saveToStorage() {
     await this.storage.set('savedLocations', this.savedLocations);
   }
 
+
   async loadFromStorage() {
     const storedLocations = await this.storage.get('savedLocations');
-    if (storedLocations) this.savedLocations = storedLocations;
-    const storedCurrentLocation = await this.storage.get('currentLocation');
-    if (storedCurrentLocation) this.currentLocation = storedCurrentLocation;
+    if (storedLocations) {
+      this.savedLocations = storedLocations; // Use stored values first
+    }
+    this.refreshSavedLocations(); // Then update if needed
   }
+
 
   toggleSelectionMode() {
     this.selectionMode = !this.selectionMode;
-
-    // Clear selection when exiting selection mode
     if (!this.selectionMode) {
-      this.savedLocations.forEach(location => {
-        location.selected = false;
-      });
+      this.savedLocations.forEach(location => { location.selected = false;});
     }
   }
 
@@ -271,13 +282,6 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
   private saveTolocalStorage() {
     localStorage.setItem('savedLocations', JSON.stringify(this.savedLocations));
-  }
-
-  private loadSavedLocations() {
-    const saved = localStorage.getItem('savedLocations');
-    if (saved) {
-      this.savedLocations = JSON.parse(saved);
-    }
   }
 
   formatTemp(temp: number | undefined): string {

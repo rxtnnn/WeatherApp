@@ -14,8 +14,8 @@ export class HomePage implements OnInit, OnDestroy {
   locationCity: string = '';
   temperature: string = '';
   weatherCondition: string = '';
-  highPressure: string = '';
-  lowPressure: string = '';
+  highPressure?: number;
+  lowPressure?: number;
   feelsLikeTemperature: string = '';
   feelsLikeDescription: string = '';
   humidity: string = '';
@@ -26,13 +26,13 @@ export class HomePage implements OnInit, OnDestroy {
   visibilityDescription: string = '';
   hourlyForecast: { time: string; temp: string; condition: string }[] = [];
   weeklyForecast: { day: string; icon: string; temp: string }[] = [];
-  private userLatitude: number | null = null;
-  private userLongitude: number | null = null;
+  private userLatitude?: number;
+  private userLongitude?: number;
   isCurrentLocation: boolean = false;
-  private locationSubscription: Subscription | null = null;
-  private settingsSubscription: Subscription | null = null;
-  selectedLatitude: number | null = null;
-  selectedLongitude: number | null = null;
+  private locationSubscription?: Subscription;
+  private settingsSubscription?: Subscription;
+  selectedLatitude?: number;
+  selectedLongitude?: number;
 
   private rawTemperatureData = {
     currentTemp: 0,
@@ -59,7 +59,7 @@ export class HomePage implements OnInit, OnDestroy {
       day: 'numeric'
     });
 
-    await this.loadStoredData(); // ✅ Load Offline Data First
+    await this.loadStoredData();
     this.getCurrentLocation();
 
     this.locationSubscription = this.weatherService.selectedLocation$.subscribe(location => {
@@ -73,6 +73,9 @@ export class HomePage implements OnInit, OnDestroy {
     this.settingsSubscription = this.settingsService.settings$.subscribe(() => {
       this.updateTemperatureDisplays();
     });
+
+    this.weatherService.highPressure$.subscribe(value => this.highPressure = value);
+    this.weatherService.lowPressure$.subscribe(value => this.lowPressure = value);
   }
 
   ngOnDestroy() {
@@ -127,12 +130,16 @@ export class HomePage implements OnInit, OnDestroy {
     const storedWeatherCondition = await this.storage.get('weatherCondition');
     const storedHourlyForecast = await this.storage.get('hourlyForecast');
     const storedWeeklyForecast = await this.storage.get('weeklyForecast');
+    const storedHighPressure = await this.storage.get('highPressure');
+    const storedLowPressure = await this.storage.get('lowPressure');
 
     if (storedCity) this.locationCity = storedCity;
     if (storedTemperature) this.temperature = storedTemperature;
     if (storedWeatherCondition) this.weatherCondition = storedWeatherCondition;
     if (storedHourlyForecast) this.hourlyForecast = storedHourlyForecast;
     if (storedWeeklyForecast) this.weeklyForecast = storedWeeklyForecast;
+    if (storedHighPressure) this.highPressure = storedHighPressure;
+    if (storedLowPressure) this.lowPressure = storedLowPressure;
   }
 
   async saveToStorage() {
@@ -144,19 +151,16 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   async updateTemperatureDisplays() {
-    console.log(this.rawTemperatureData.currentTemp);
+
     if (this.rawTemperatureData.currentTemp || this.rawTemperatureData.currentTemp === 0) {
       this.temperature = this.settingsService.formatTemperature(this.rawTemperatureData.currentTemp, 'celsius');
       this.feelsLikeTemperature = this.settingsService.formatTemperature(this.rawTemperatureData.feelsLike, 'celsius');
 
-      // ✅ FIX: Use `await` because getFeelsLikeDescription() returns a Promise<string>
       this.feelsLikeDescription = await this.getFeelsLikeDescription(this.rawTemperatureData.currentTemp, this.rawTemperatureData.feelsLike);
 
       this.dewPoint = `The dew point is ${this.settingsService.formatTemperature(this.rawTemperatureData.dewPointTemp, 'celsius')} right now.`;
-      this.highPressure = this.settingsService.formatTemperature(this.rawTemperatureData.highTemp, 'celsius');
-      this.lowPressure = this.settingsService.formatTemperature(this.rawTemperatureData.lowTemp, 'celsius');
 
-      console.log(this.temperature);
+
     }
   }
 
@@ -181,23 +185,18 @@ export class HomePage implements OnInit, OnDestroy {
         const humidity = data.main.humidity;
         const dewPointTemp = await this.calculateDewPoint(data.main.temp, humidity);
 
-        // Store raw temperature data
+        this.rawTemperatureData.highTemp = data.highTemp;
+        this.rawTemperatureData.lowTemp = data.lowTemp;
         this.rawTemperatureData.currentTemp = tempValue;
         this.rawTemperatureData.feelsLike = feelsLike;
         this.rawTemperatureData.dewPointTemp = dewPointTemp;
 
-        // Format and apply settings
         this.temperature = this.settingsService.formatTemperature(tempValue, 'celsius');
         this.weatherCondition = data.weather[0].description;
         this.feelsLikeTemperature = this.settingsService.formatTemperature(feelsLike, 'celsius');
-
-        // ✅ FIX: Use `await` to get the string from the async function
         this.feelsLikeDescription = await this.getFeelsLikeDescription(tempValue, feelsLike);
-
         this.humidity = `${humidity}%`;
         this.dewPoint = `The dew point is ${this.settingsService.formatTemperature(dewPointTemp, 'celsius')} right now.`;
-
-        // Save to Storage
         await this.saveToStorage();
       },
       async (error) => {
@@ -206,7 +205,6 @@ export class HomePage implements OnInit, OnDestroy {
       }
     );
   }
-
 
   async getHourlyWeather(latitude: number, longitude: number) {
     this.weatherService.getHourlyWeather(latitude, longitude).subscribe(
@@ -217,7 +215,6 @@ export class HomePage implements OnInit, OnDestroy {
           condition: hour.weather[0].main,
         }));
         await this.storage.set('hourlyForecast', this.hourlyForecast);
-        // Formatting
         this.hourlyForecast = this.rawTemperatureData.hourlyForecast.map(hour => ({
           time: hour.time,
           temp: this.settingsService.formatTemperature(hour.temp, 'celsius'), //to allow unit conversion
@@ -381,4 +378,7 @@ export class HomePage implements OnInit, OnDestroy {
     }
   }
 
+  formatTemp(temp: number | undefined): string {
+    return temp !== undefined ? this.settingsService.formatTemperature(temp, 'celsius') : 'N/A';
+  }
 }
