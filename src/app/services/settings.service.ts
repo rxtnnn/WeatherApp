@@ -34,7 +34,7 @@ export class SettingsService {
       const storedSettings = await this.storage.get('app_settings');
       if (storedSettings) {
         this._settings.next(storedSettings);
-        this.applySettings(storedSettings);
+        this.applySettings(storedSettings); // ✅ Apply settings immediately when loaded
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -53,11 +53,8 @@ export class SettingsService {
       console.error('Error saving settings:', error);
     }
   }
-  private applySettings(settings: AppSettings) {
-    // ✅ Apply dark mode instantly
+  public applySettings(settings: AppSettings) {
     document.body.classList.toggle('dark', settings.darkMode);
-
-    // ✅ Apply temperature unit
     document.body.setAttribute('temp-unit', settings.temperatureUnit);
   }
 

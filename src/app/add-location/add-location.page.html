@@ -6,15 +6,6 @@
         <ion-buttons slot="start">
           <ion-back-button text="Weather" default-href="/tabs/home"></ion-back-button>
         </ion-buttons>
-        <ion-buttons slot="end">
-          <ion-button (click)="toggleSelectionMode()">
-            <ion-icon slot="icon-only" name="ellipsis-horizontal"></ion-icon>
-          </ion-button>
-        </ion-buttons>
-        <!-- Show Delete Button in Selection Mode -->
-        <ion-button *ngIf="selectionMode" (click)="deleteSelected()" color="danger">
-          Delete Selected
-        </ion-button>
       </div>
 
       <!-- Search bar -->
@@ -61,7 +52,7 @@
           </ion-card>
 
           <!-- No results message -->
-          <ion-card *ngIf="!searchedLocation && filteredLocations.length === 0 && !isLoading && showingSearchResults" class="location-card">
+          <ion-card *ngIf="!searchedLocation && filteredLocations.length === 0 && showingSearchResults" class="location-card">
             <ion-card-content>
               <p>{{ errorMessage || 'No locations found' }}</p>
             </ion-card-content>

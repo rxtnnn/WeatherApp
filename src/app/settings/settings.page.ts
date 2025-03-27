@@ -18,21 +18,6 @@ export class SettingsPage implements OnInit {
   }
 
   async ngOnInit() {
-    const savedTheme = await this.storage.get('theme') || 'light';
-    this.isDarkMode = savedTheme === 'dark';
-    document.body.setAttribute('color-theme', savedTheme);
-
-    const savedTempUnit = await this.storage.get('temperatureUnit') || 'celsius';
-    this.temperatureUnit = savedTempUnit as 'celsius' | 'fahrenheit';
-    this.settingsService.updateSettings({
-      darkMode: this.isDarkMode,
-      temperatureUnit: this.temperatureUnit
-    });
-
-    this.settingsService.settings$.subscribe(settings => {
-      this.isDarkMode = settings.darkMode;
-      this.temperatureUnit = settings.temperatureUnit;
-    });
   }
 
 
