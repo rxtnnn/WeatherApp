@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { WeatherService } from '../services/weather.service';
-import { Subject } from 'rxjs';
+import { forkJoin, Subject } from 'rxjs';
 import { take, takeUntil } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { IonItemSliding } from '@ionic/angular';
@@ -15,8 +15,8 @@ interface Location {
   lat: number;
   lon: number;
   temp?: number;
-  high?: number; // High temperature (H)
-  low?: number;  // Low temperature (L)
+  high?: number;
+  low?: number;
   isCurrentLocation?: boolean;
   selected?: boolean;
   isExisting?: boolean;
@@ -55,8 +55,8 @@ export class AddLocationPage implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
+    await this.getCurrentLocation();
     await this.loadFromStorage();
-    this.getCurrentLocation();
     this.refreshSavedLocations();
 
     this.settingsService.settings$.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -72,28 +72,38 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
   async getCurrentLocation() {
     try {
+      // Get the current location (latitude and longitude)
       const { latitude, longitude } = await this.weatherService.getCurrentLocation();
-      this.weatherService.getCityName(latitude, longitude).pipe(takeUntil(this.destroy$)).subscribe({
-        next: async (data) => {
-          const cityName = data.address.city || data.address.town || data.address.village || 'Unknown';
-          const countryName = data.address.country || '';
 
-          this.fetchWeatherData({
-            name: cityName,
-            country: countryName,
-            lat: latitude,
-            lon: longitude,
-            isCurrentLocation: true,
-          });
+      // Get the city name based on the latitude and longitude
+      const cityData = await this.weatherService.getCityName(latitude, longitude).toPromise();
+      const cityName = cityData.address.city || 'Unknown';
+      const countryName = cityData.address.country || '';
 
-          await this.storage.set('currentLocation', { name: cityName, country: countryName, lat: latitude, lon: longitude });
-        },
-        error: () => {
-          this.errorMessage = 'Could not determine your location';
-        },
-      });
-    } catch {
-      this.errorMessage = 'Location access denied or unavailable';
+      // Get the weather data based on the latitude and longitude
+      const weatherData = await this.weatherService.getWeatherData(latitude, longitude).toPromise();
+
+      const location: Location = {
+        name: cityName,
+        country: countryName,
+        lat: latitude,
+        lon: longitude,
+        isCurrentLocation: true,
+        temp: Math.round(weatherData.main.temp),
+      };
+
+      // Get the high and low temperatures
+      const result = await this.weatherService.getHighLowTemperature(latitude, longitude).toPromise();
+      if (result && result.high !== undefined) {
+        location.high = Math.round(result.high);
+      } else {
+        this.errorMessage = 'Could not fetch high temperature data';
+      }
+      await this.storage.set('currentLocation', location);
+      this.currentLocation = location;
+
+    } catch (error) {
+      this.errorMessage = 'Could not determine your location or fetch weather data.';
     }
   }
 
@@ -141,31 +151,6 @@ export class AddLocationPage implements OnInit, OnDestroy {
     }
   }
 
-  // Modified to fetch high (H) and low (L) temperatures instead of pressure.
-  addLocation() {
-    if (!this.searchedLocation || this.locationExists(this.searchedLocation)) {
-      return;
-    }
-
-    this.fetchWeatherData(this.searchedLocation);
-    this.clearSearch();
-  }
-
-  private locationExists(location: Location): boolean {
-    return this.savedLocations.some(saved =>
-      saved.name.toLowerCase() === location.name.toLowerCase() &&
-      saved.country.toLowerCase() === location.country.toLowerCase()
-    );
-  }
-
-  clearSearch() {
-    this.searchQuery = '';
-    this.searchedLocation = null;
-    this.filteredLocations = [];
-    this.showingSearchResults = false;
-  }
-
-  // Fetch weather data and use forecast data to compute H and L temperatures.
   private fetchWeatherData(location: Location) {
     this.weatherService.getWeatherData(location.lat, location.lon)
       .pipe(takeUntil(this.destroy$))
@@ -173,15 +158,10 @@ export class AddLocationPage implements OnInit, OnDestroy {
         next: async (currentData) => {
           if (currentData?.main) {
             location.temp = Math.round(currentData.main.temp);
-            // NEW: Fetch forecast based high and low temperatures for this location.
-            this.weatherService.getHighLowTemperature(location.lat, location.lon)
-              .pipe(take(1))
-              .subscribe({
+            this.weatherService.getHighLowTemperature(location.lat, location.lon).pipe(take(1)) .subscribe({
                 next: (result: { high: number; low: number }) => {
-                  // Use result.high and result.low for the high (H) and low (L) temperatures.
                   location.high = Math.round(result.high);
                   location.low = Math.round(result.low);
-                  // Update currentLocation or savedLocations accordingly
                   if (location.isCurrentLocation) {
                     this.currentLocation = { ...location };
                   } else {
@@ -192,37 +172,29 @@ export class AddLocationPage implements OnInit, OnDestroy {
                 error: () => {
                   this.errorMessage = 'Could not fetch forecast data for temperature.';
                 }
-              });
-          }
-        },
+              });} },
         error: () => {
           this.errorMessage = 'Could not fetch weather data';
         }
       });
   }
 
-
   openLocationDetails(location: Location) {
-    if (!this.selectionMode) {
-      this.weatherService.getWeatherData(location.lat, location.lon)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (data) => {
-            this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
-            this.router.navigateByUrl('/home');
-          },
-          error: (error) => {
-            console.error('Error updating weather before navigation:', error);
-            this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
-            this.router.navigateByUrl('/home');
-          }
-        });
-    } else {
-      location.selected = !location.selected;
-    }
+    this.weatherService.getWeatherData(location.lat, location.lon)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+       next: () => {
+        this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
+        this.router.navigateByUrl('/home');
+      },
+        error: (error) => {
+        alert('Error updating weather before navigation:' + error);
+        this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
+        this.router.navigateByUrl('/home');
+      }
+    });
   }
 
-  // Refresh saved locations using forecast data to update high (H) and low (L) temperatures.
   async refreshSavedLocations() {
     if (this.savedLocations.length === 0) return;
 
@@ -244,13 +216,35 @@ export class AddLocationPage implements OnInit, OnDestroy {
                     }
                     await this.saveToStorage();
                   },
-                  error: () => console.error(`Failed to refresh forecast for ${location.name}`)
+                  error: () => alert(`Failed to refresh forecast for ${location.name}`)
                 });
             }
           },
-          error: () => console.error(`Failed to refresh current weather for ${location.name}`)
+          error: () => alert(`Failed to refresh current weather for ${location.name}`)
         });
     });
+  }
+
+  addLocation() {
+    if (!this.searchedLocation || this.locationExists(this.searchedLocation)) {
+      return;
+    }
+    this.fetchWeatherData(this.searchedLocation);
+    this.clearSearch();
+  }
+
+  private locationExists(location: Location): boolean {
+    return this.savedLocations.some(saved =>
+      saved.name.toLowerCase() === location.name.toLowerCase() &&
+      saved.country.toLowerCase() === location.country.toLowerCase()
+    );
+  }
+
+  clearSearch() {
+    this.searchQuery = '';
+    this.searchedLocation = null;
+    this.filteredLocations = [];
+    this.showingSearchResults = false;
   }
 
   async saveToStorage() {
@@ -262,15 +256,15 @@ export class AddLocationPage implements OnInit, OnDestroy {
     if (storedLocations) {
       this.savedLocations = storedLocations;
     }
+
+    const storedCurrentLocation = await this.storage.get('currentLocation');
+    if (storedCurrentLocation) {
+      this.currentLocation = storedCurrentLocation;
+    }
+
     this.refreshSavedLocations();
   }
 
-  toggleSelectionMode() {
-    this.selectionMode = !this.selectionMode;
-    if (!this.selectionMode) {
-      this.savedLocations.forEach(location => { location.selected = false; });
-    }
-  }
 
   deleteLocation(index: number, slidingItem: IonItemSliding) {
     slidingItem.close();

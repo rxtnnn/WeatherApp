@@ -153,24 +153,9 @@ ion-card{
   font-weight: 500;
   margin-bottom: 12px;
 }
-
-.weather-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 12px;
-
-  .weekly-icon {
-    height: 10px;
-    width: 10px;
-    color: #4c8dff;
-    margin-bottom: 4px;
-  }
-}
-
-.precipitation {
-  font-size: 12px;
-  color: #4c8dff;
+.weekly-icon{
+  width: 40px;
+  height: 40px;
 }
 
 .temperature {
@@ -189,7 +174,7 @@ ion-card{
 }
 hr{
   border: none;
-  background-color: #9b9a9a;
+  background-color: #bdb8b8;
   font-weight: 300;
 }
 
@@ -211,7 +196,7 @@ hr{
 }
 
 .weather-container {
-  margin: 1rem 1rem 5rem 1rem;
+  margin: 1rem 1rem 3.5rem 1rem;
   display: flex;
 
 }

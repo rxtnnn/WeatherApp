@@ -34,7 +34,7 @@
             <ion-card class="forecast-item" *ngFor="let hour of hourlyForecast">
               <div class="time">{{ hour.time }}</div>
               <div class="weather-icon">
-                <ion-icon [name]="getWeatherIcon(hour.condition)" class="icon-weather"></ion-icon>
+                <img [src]="getWeatherIcon(hour.condition, hour.hour)" alt="{{ hour.condition }}" class="icon-weather">
               </div>
               <div class="temperature">{{ hour.temp }}</div>
             </ion-card>
@@ -48,7 +48,7 @@
       <hr>
       <ion-grid class="weekly-grid">
         <ion-row *ngFor="let day of weeklyForecast" class="weekly">
-          {{ day.day }} <ion-icon [name]="day.icon" class="weekly-icon"></ion-icon>
+          {{ day.day }} <img [src]="day.icon" alt="Weather Icon" class="weekly-icon">
           <span class="week-temp">{{ day.temp }}</span>
         </ion-row>
       </ion-grid>
@@ -93,7 +93,7 @@
                     <ion-icon name="eye-outline" class="condition-icon"></ion-icon>
                     <span>VISIBILITY</span>
                   </div>
-                  <div class="value mb-3">{{ visibility }}</div>
+                  <div class="value mb-3 fs-1">{{ visibility }}</div>
                   <div class="desc-condition"> {{ visibilityDescription }}</div>
                 </ion-card-content>
               </ion-card>
@@ -103,15 +103,15 @@
               <ion-card class="weather-card rainfall-container">
                 <ion-card-content>
                   <div class="header">
-                    <ion-icon name="water-outline" class="condition-icon"></ion-icon>
-                    <span>RAINFALL</span>
+                    <ion-icon name="sunny" class="condition-icon"></ion-icon>
+                    <span>SUNRISE</span>
                   </div>
                   <div class="value fs-2">
-                    {{ precipitationLast3h }} mm
-                    <p class="rainfall-label fs-6">in the last 3 hours</p>
+                    {{ sunrise }}
                   </div>
-                  <div class="desc-condition">
-                    {{ precipitationNext24h }} mm next 24 hours
+                  <hr><br>
+                  <div style="font-size: 13px;">
+                    Sunset: {{ sunset }}
                   </div>
                 </ion-card-content>
               </ion-card>

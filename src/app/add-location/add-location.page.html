@@ -51,7 +51,6 @@
             </ion-item>
           </ion-card>
 
-          <!-- No results message -->
           <ion-card *ngIf="!searchedLocation && filteredLocations.length === 0 && showingSearchResults" class="location-card">
             <ion-card-content>
               <p>{{ errorMessage || 'No locations found' }}</p>
@@ -62,7 +61,7 @@
         <!-- Regular location list (when not searching) -->
         <ion-card *ngIf="!showingSearchResults" class="location-cards-container">
           <!-- Current location first -->
-          <ion-item-sliding *ngIf="currentLocation" #currentSliding class="location-card-wrapper">
+          <ion-item-sliding *ngIf="currentLocation" class="location-card-wrapper">
             <ion-item class="location-item" (click)="openLocationDetails(currentLocation)">
               <ion-label>
                 <div class="location-info">
