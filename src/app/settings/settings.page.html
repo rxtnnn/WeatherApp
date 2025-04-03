@@ -1,12 +1,12 @@
 <ion-content class="settings-page">
   <div class="ion-padding">
     <div class="header">
-      <h1>SETTINGS</h1>
+      <h3>SETTINGS</h3>
     </div>
 
     <!-- Appearance Section -->
     <div class="settings-section">
-      <h1 class="fw-bold">Appearance</h1>
+      <h4 class="fw-bold">Appearance</h4>
 
       <ion-card class="appearance">
         <ion-card-content class="settings-item">
@@ -18,7 +18,7 @@
 
     <!-- Temperature Scales Section -->
     <div class="settings-section">
-      <h1 class="fw-bold">Temperature Unit</h1>
+      <h4 class="fw-bold">Temperature Unit</h4>
 
       <ion-card class="temp-scales">
         <ion-radio-group [value]="temperatureUnit" (ionChange)="temperatureUnitChanged($event)">

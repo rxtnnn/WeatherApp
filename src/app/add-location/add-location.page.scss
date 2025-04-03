@@ -100,24 +100,6 @@ ion-label {
   overflow-y: scroll;
   margin-top: 1rem;
 }
-/* Footer tab bar styles */
-ion-tab-button {
-  --color: #888;
-  --color-selected: #000;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-ion-tab-button ion-icon {
-  font-size: 24px;
-}
-
-ion-tab-button:nth-child(2) ion-icon {
-  font-size: 36px;
-}
-ion-tab-bar{
-  border: none;
-  background-color: rgba(255, 255, 255, 0.1);
-}
 
 .location-item {
   --background: transparent;

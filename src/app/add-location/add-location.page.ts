@@ -290,28 +290,16 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
   updateTemperatureDisplay() {
     const unit = this.settingsService.getTemperatureUnit();
+    const formatTemp = (temp?: number) =>
+      temp !== undefined ? this.settingsService.formatTemperature(temp, unit) : undefined;
 
-    this.savedLocations.forEach(location => {
-      if (location.temp !== undefined) {
-        location.formattedTemp = this.settingsService.formatTemperature(location.temp, unit);
-      }
-      if (location.high !== undefined) {
-        location.formattedHigh = this.settingsService.formatTemperature(location.high, unit);
-      }
-      if (location.low !== undefined) {
-        location.formattedLow = this.settingsService.formatTemperature(location.low, unit);
-      }
+    const allLocations = [...this.savedLocations, this.currentLocation];
+
+    allLocations.forEach(location => {
+      location.formattedTemp = formatTemp(location.temp);
+      location.formattedHigh = formatTemp(location.high);
+      location.formattedLow = formatTemp(location.low);
     });
-
-    if (this.currentLocation.temp !== undefined) {
-      this.currentLocation.formattedTemp = this.settingsService.formatTemperature(this.currentLocation.temp, unit);
-    }
-    if (this.currentLocation.high !== undefined) {
-      this.currentLocation.formattedHigh = this.settingsService.formatTemperature(this.currentLocation.high, unit);
-    }
-    if (this.currentLocation.low !== undefined) {
-      this.currentLocation.formattedLow = this.settingsService.formatTemperature(this.currentLocation.low, unit);
-    }
   }
 
 }

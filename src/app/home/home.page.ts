@@ -3,7 +3,7 @@ import { WeatherService } from '../services/weather.service';
 import { SettingsService } from '../services/settings.service';
 import { Subscription } from 'rxjs';
 import { Storage } from '@ionic/storage-angular';
-import { Preferences } from '@capacitor/preferences';
+import { Network } from '@capacitor/network';
 
 @Component({
   selector: 'app-home',
@@ -36,9 +36,10 @@ export class HomePage implements OnInit, OnDestroy {
   selectedLatitude?: number;
   selectedLongitude?: number;
   isDarkMode?: boolean;
+  isOnline: boolean = true;
+  networkMessage: string = '';
   temperatureUnit: 'celsius' | 'fahrenheit' = 'celsius';
   private rawHighLow?: { high: number; low: number };
-  // Raw temperature data for conversion
   private rawTemperatureData = {
     currentTemp: 0,
     feelsLike: 0,
@@ -80,9 +81,6 @@ export class HomePage implements OnInit, OnDestroy {
         this.temperatureUnit = newUnit;
         this.updateTemperatureDisplays();
       }
-
-      // Handle any other settings that might be added in the future
-      this.applySettingsChanges(settings);
     });
 
     this.locationSubscription = this.weatherService.selectedLocation$.subscribe(location => {
@@ -92,25 +90,29 @@ export class HomePage implements OnInit, OnDestroy {
         this.getCurrentLocation();
       }
     });
+
+    Network.addListener('networkStatusChange', async (status) => {
+      this.isOnline = status.connected;
+
+      if (this.isOnline) {
+        alert('Your internet connection was restored.');
+        if (this.selectedLatitude && this.selectedLongitude) {
+          this.fetchWeatherData(this.selectedLatitude, this.selectedLongitude, this.locationCity);
+        } else {
+          await this.getCurrentLocation();
+        }
+      } else {
+        alert('You are offline. Check your connection.');
+      }
+    });
   }
 
   ngOnDestroy() {
-    if (this.locationSubscription) {
-      this.locationSubscription.unsubscribe();
-    }
-    if (this.settingsSubscription) {
-      this.settingsSubscription.unsubscribe();
-    }
+    if (this.locationSubscription) { this.locationSubscription.unsubscribe(); }
+    if (this.settingsSubscription) { this.settingsSubscription.unsubscribe(); }
+    Network.removeAllListeners();
   }
 
-  // Apply any settings changes to the UI
-  private applySettingsChanges(settings: any) {
-    // You can add more settings handling here as needed
-    // For example, if you add unit preferences for other measurements
-
-    // If there are any UI elements that depend on settings
-    // Update them here
-  }
 
   async getCurrentLocation() {
     try {
@@ -177,7 +179,6 @@ export class HomePage implements OnInit, OnDestroy {
     if (storedHighTemp) this.highTemperature = storedHighTemp;
     if (storedLowTemp) this.lowTemperature = storedLowTemp;
 
-    // Initialize temperature unit from settings
     this.temperatureUnit = this.settingsService.getTemperatureUnit();
   }
 
@@ -224,7 +225,6 @@ export class HomePage implements OnInit, OnDestroy {
       this.lowTemperature = this.settingsService.formatTemperature(this.rawHighLow.low, unit);
     }
 
-    // Save updated displays to storage
     await this.saveToStorage();
   }
 
@@ -235,7 +235,7 @@ export class HomePage implements OnInit, OnDestroy {
         this.locationCity = data.address.city || data.address.town || data.address.village || 'Unknown';
       },
       (error) => {
-        this.locationCity = 'Location unavailable';
+        alert('Location unavailable'+error);
       }
     );
   }
@@ -368,20 +368,6 @@ export class HomePage implements OnInit, OnDestroy {
     );
   }
 
-  getVisibilityDescription(visibilityKm: number): string {
-    if (visibilityKm >= 10) {
-      return 'Perfectly clear view';
-    } else if (visibilityKm >= 5) {
-      return 'Good visibility';
-    } else if (visibilityKm >= 2) {
-      return 'Moderate visibility';
-    } else if (visibilityKm >= 1) {
-      return 'Poor visibility';
-    } else {
-      return 'Very poor visibility';
-    }
-  }
-
   async checkIfCurrentLocation() {
     if (this.userLatitude && this.userLongitude && this.selectedLatitude && this.selectedLongitude) {
       this.isCurrentLocation =
@@ -404,34 +390,41 @@ export class HomePage implements OnInit, OnDestroy {
 
     switch (condition.toLowerCase()) {
       case 'clear':
-        iconCode = '01';
+        iconCode = isDayTime ? '01d' : '01n';
         break;
-      case 'clouds':
-        iconCode = '03';
+      case 'few clouds':
+        iconCode = isDayTime ? '02d' : '02n';
+        break;
+      case 'scattered clouds':
+        iconCode = isDayTime ? '03d' : '03n';
+        break;
+      case 'broken clouds':
+      case 'overcast clouds':
+        iconCode = isDayTime ? '04d' : '04n';
+        break;
+      case 'shower rain':
+      case 'light rain':
+        iconCode = isDayTime ? '09d' : '09n';
         break;
       case 'rain':
-      case 'drizzle':
-        iconCode = '09';
+        iconCode = isDayTime ? '10d' : '10n';
         break;
       case 'thunderstorm':
-        iconCode = '11';
+        iconCode = isDayTime ? '11d' : '11n';
         break;
       case 'snow':
-        iconCode = '13';
+        iconCode = isDayTime ? '13d' : '13n';
         break;
       case 'mist':
       case 'fog':
-        iconCode = '50';
+        iconCode = isDayTime ? '50d' : '50n';
         break;
       default:
-        iconCode = '01';
-        break;
+        iconCode = isDayTime ? '01d' : '01n';
     }
-    const dayNight = isDayTime ? 'd' : 'n';
-    const iconUrl = `https://openweathermap.org/img/wn/${iconCode}${dayNight}@2x.png`;
-
-    return iconUrl;
+    return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
   }
+
 
   async getFeelsLikeDescription(actualTemp: number, feelsLike: number): Promise<string> {
     const difference = Math.abs(actualTemp - feelsLike);
@@ -449,5 +442,12 @@ export class HomePage implements OnInit, OnDestroy {
     const b = 237.7;
     const alpha = ((a * temp) / (b + temp)) + Math.log(humidity / 100);
     return Math.trunc((b * alpha) / (a - alpha));
+  }
+  getVisibilityDescription(visibilityKm: number): string {
+    if (visibilityKm >= 10) return 'Perfectly clear view';
+    if (visibilityKm >= 5) return 'Good visibility';
+    if (visibilityKm >= 2) return 'Moderate visibility';
+    if (visibilityKm >= 1) return 'Poor visibility';
+    return 'Very poor visibility';
   }
 }
