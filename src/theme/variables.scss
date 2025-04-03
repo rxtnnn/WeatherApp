@@ -57,12 +57,11 @@ body[color-theme="dark"] {
     color: black !important;
   }
   .custom-searchbar{
-    --ion-background-color: #333333;
     box-shadow: none;
     --color: white !important;
   }
-  ion-searchbar placeholder{
-    --color: white !important;
+  .custom-searchbar ::placeholder{
+    color: white !important;
   }
 
   .settings-item ion-label {

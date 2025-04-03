@@ -10,12 +10,11 @@ export class AppComponent implements OnInit {
   constructor() {}
 
   ngOnInit() {
-    // Apply saved theme on app initialization
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       document.body.setAttribute('color-theme', savedTheme);
     } else {
-      document.body.setAttribute('color-theme', 'light'); // Default theme
+      document.body.setAttribute('color-theme', 'light');
     }
   }
 }

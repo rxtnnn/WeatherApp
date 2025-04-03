@@ -3,9 +3,7 @@
     <div class="ion-padding">
       <!-- Header -->
       <div class="header">
-        <ion-buttons slot="start">
-          <ion-back-button text="Weather" default-href="/tabs/home"></ion-back-button>
-        </ion-buttons>
+        <h1>WEATHER</h1>
       </div>
 
       <!-- Search bar -->
@@ -41,11 +39,11 @@
                     <p>{{ location.country }}</p>
                   </div>
                   <div class="temperature">
-                    <span class="temp-value">{{ formatTemp(location.temp) }}</span>
+                    <span class="temp-value">{{ location.formattedTemp }}</span>
                   </div>
                 </div>
                 <div class="high-low">
-                  <span>H: {{ formatTemp(location.high) }} L: {{ formatTemp(location.low) }}</span>
+                  <span>H: {{ location.formattedHigh }} L: {{ location.formattedLow }}</span>
                 </div>
               </ion-label>
             </ion-item>
@@ -71,11 +69,11 @@
                     <p>{{ currentLocation.country }}</p>
                   </div>
                   <div class="temperature">
-                    <span class="temp-value">{{ formatTemp(currentLocation.temp) }}</span>
+                    <span class="temp-value">{{ currentLocation.formattedTemp }}</span>
                   </div>
                 </div>
                 <div class="high-low">
-                  <span>H: {{ formatTemp(currentLocation.high) }} L: {{ formatTemp(currentLocation.low) }}</span>
+                  <span>H: {{ currentLocation.formattedHigh }} L: {{ currentLocation.formattedLow }}</span>
                 </div>
               </ion-label>
             </ion-item>
@@ -91,11 +89,11 @@
                     <p>{{ location.country }}</p>
                   </div>
                   <div class="temperature">
-                    <span class="temp-value">{{ formatTemp(location.temp) }}</span>
+                    <span class="temp-value">{{ location.formattedTemp }}</span>
                   </div>
                 </div>
                 <div class="high-low">
-                  <span>H: {{ formatTemp(location.high) }} L: {{ formatTemp(location.low) }}</span>
+                  <span>H: {{ location.formattedHigh }} L: {{ location.formattedLow }}</span>
                 </div>
               </ion-label>
             </ion-item>

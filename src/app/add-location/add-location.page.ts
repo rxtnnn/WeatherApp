@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { WeatherService } from '../services/weather.service';
-import { forkJoin, Subject } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import { take, takeUntil } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { IonItemSliding } from '@ionic/angular';
@@ -20,6 +20,9 @@ interface Location {
   isCurrentLocation?: boolean;
   selected?: boolean;
   isExisting?: boolean;
+  formattedTemp?: string;
+  formattedHigh?: string;
+  formattedLow?: string;
 }
 
 @Component({
@@ -37,8 +40,10 @@ export class AddLocationPage implements OnInit, OnDestroy {
   savedLocations: Location[] = [];
   errorMessage = '';
   selectionMode = false;
+  isDarkMode?: boolean;
   private destroy$ = new Subject<void>();
   private weatherApiKey = environment.weatherApiKey;
+  private settingsSubscription?: Subscription;
 
   constructor(
     private http: HttpClient,
@@ -59,9 +64,10 @@ export class AddLocationPage implements OnInit, OnDestroy {
     await this.loadFromStorage();
     this.refreshSavedLocations();
 
-    this.settingsService.settings$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.savedLocations = [...this.savedLocations];
-      this.currentLocation = { ...this.currentLocation };
+    this.settingsSubscription = this.settingsService.settings$.subscribe(settings => {
+      this.isDarkMode = settings.darkMode;
+      document.body.setAttribute('color-theme', settings.darkMode ? 'dark' : 'light');
+      this.updateTemperatureDisplay();
     });
   }
 
@@ -72,15 +78,10 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
   async getCurrentLocation() {
     try {
-      // Get the current location (latitude and longitude)
       const { latitude, longitude } = await this.weatherService.getCurrentLocation();
-
-      // Get the city name based on the latitude and longitude
       const cityData = await this.weatherService.getCityName(latitude, longitude).toPromise();
       const cityName = cityData.address.city || 'Unknown';
       const countryName = cityData.address.country || '';
-
-      // Get the weather data based on the latitude and longitude
       const weatherData = await this.weatherService.getWeatherData(latitude, longitude).toPromise();
 
       const location: Location = {
@@ -92,10 +93,10 @@ export class AddLocationPage implements OnInit, OnDestroy {
         temp: Math.round(weatherData.main.temp),
       };
 
-      // Get the high and low temperatures
       const result = await this.weatherService.getHighLowTemperature(latitude, longitude).toPromise();
-      if (result && result.high !== undefined) {
+      if (result && result.high !== undefined && result.low !== undefined) {
         location.high = Math.round(result.high);
+        location.low = Math.round(result.low);
       } else {
         this.errorMessage = 'Could not fetch high temperature data';
       }
@@ -158,21 +159,30 @@ export class AddLocationPage implements OnInit, OnDestroy {
         next: async (currentData) => {
           if (currentData?.main) {
             location.temp = Math.round(currentData.main.temp);
-            this.weatherService.getHighLowTemperature(location.lat, location.lon).pipe(take(1)) .subscribe({
-                next: (result: { high: number; low: number }) => {
-                  location.high = Math.round(result.high);
-                  location.low = Math.round(result.low);
-                  if (location.isCurrentLocation) {
-                    this.currentLocation = { ...location };
-                  } else {
-                    this.savedLocations = [...this.savedLocations, location];
-                    this.saveToStorage();
-                  }
-                },
-                error: () => {
-                  this.errorMessage = 'Could not fetch forecast data for temperature.';
+            this.weatherService.getHighLowTemperature(location.lat, location.lon).pipe(take(1)).subscribe({
+              next: (result: { high: number; low: number }) => {
+                location.high = Math.round(result.high);
+                location.low = Math.round(result.low);
+
+                // Add these lines to update formatted temperature values
+                const unit = this.settingsService.getTemperatureUnit();
+                location.formattedTemp = this.settingsService.formatTemperature(location.temp!, unit);
+                location.formattedHigh = this.settingsService.formatTemperature(location.high, unit);
+                location.formattedLow = this.settingsService.formatTemperature(location.low, unit);
+
+                if (location.isCurrentLocation) {
+                  this.currentLocation = { ...location };
+                } else {
+                  this.savedLocations = [...this.savedLocations, location];
+                  this.saveToStorage();
                 }
-              });} },
+              },
+              error: () => {
+                this.errorMessage = 'Could not fetch forecast data for temperature.';
+              }
+            });
+          }
+        },
         error: () => {
           this.errorMessage = 'Could not fetch weather data';
         }
@@ -229,6 +239,9 @@ export class AddLocationPage implements OnInit, OnDestroy {
     if (!this.searchedLocation || this.locationExists(this.searchedLocation)) {
       return;
     }
+    this.searchedLocation.formattedTemp = '';
+    this.searchedLocation.formattedHigh = '';
+    this.searchedLocation.formattedLow = '';
     this.fetchWeatherData(this.searchedLocation);
     this.clearSearch();
   }
@@ -265,7 +278,6 @@ export class AddLocationPage implements OnInit, OnDestroy {
     this.refreshSavedLocations();
   }
 
-
   deleteLocation(index: number, slidingItem: IonItemSliding) {
     slidingItem.close();
     this.savedLocations.splice(index, 1);
@@ -275,4 +287,31 @@ export class AddLocationPage implements OnInit, OnDestroy {
   formatTemp(temp: number | undefined): string {
     return temp !== undefined ? this.settingsService.formatTemperature(temp, 'celsius') : 'N/A';
   }
+
+  updateTemperatureDisplay() {
+    const unit = this.settingsService.getTemperatureUnit();
+
+    this.savedLocations.forEach(location => {
+      if (location.temp !== undefined) {
+        location.formattedTemp = this.settingsService.formatTemperature(location.temp, unit);
+      }
+      if (location.high !== undefined) {
+        location.formattedHigh = this.settingsService.formatTemperature(location.high, unit);
+      }
+      if (location.low !== undefined) {
+        location.formattedLow = this.settingsService.formatTemperature(location.low, unit);
+      }
+    });
+
+    if (this.currentLocation.temp !== undefined) {
+      this.currentLocation.formattedTemp = this.settingsService.formatTemperature(this.currentLocation.temp, unit);
+    }
+    if (this.currentLocation.high !== undefined) {
+      this.currentLocation.formattedHigh = this.settingsService.formatTemperature(this.currentLocation.high, unit);
+    }
+    if (this.currentLocation.low !== undefined) {
+      this.currentLocation.formattedLow = this.settingsService.formatTemperature(this.currentLocation.low, unit);
+    }
+  }
+
 }

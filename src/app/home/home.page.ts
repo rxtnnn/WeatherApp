@@ -3,6 +3,7 @@ import { WeatherService } from '../services/weather.service';
 import { SettingsService } from '../services/settings.service';
 import { Subscription } from 'rxjs';
 import { Storage } from '@ionic/storage-angular';
+import { Preferences } from '@capacitor/preferences';
 
 @Component({
   selector: 'app-home',
@@ -25,7 +26,7 @@ export class HomePage implements OnInit, OnDestroy {
   visibilityDescription: string = '';
   sunrise?: string;
   sunset?: string;
-  hourlyForecast: { time: string; temp: string; condition: string;  hour: number; icon: string; }[] = [];
+  hourlyForecast: { time: string; temp: string; condition: string; hour: number; icon: string; }[] = [];
   weeklyForecast: { day: string; icon: string; temp: string }[] = [];
   private userLatitude?: number;
   private userLongitude?: number;
@@ -35,13 +36,14 @@ export class HomePage implements OnInit, OnDestroy {
   selectedLatitude?: number;
   selectedLongitude?: number;
   isDarkMode?: boolean;
+  temperatureUnit: 'celsius' | 'fahrenheit' = 'celsius';
   private rawHighLow?: { high: number; low: number };
   // Raw temperature data for conversion
   private rawTemperatureData = {
     currentTemp: 0,
     feelsLike: 0,
     dewPointTemp: 0,
-    hourlyForecast: [] as { time: string; condition: string; temp: number; hour:number, icon: string; }[],
+    hourlyForecast: [] as { time: string; condition: string; temp: number; hour: number, icon: string; }[],
     weeklyForecast: [] as { day: string; icon: string; temp: number }[]
   };
 
@@ -65,13 +67,22 @@ export class HomePage implements OnInit, OnDestroy {
       month: 'short',
       day: 'numeric'
     });
-    const savedTheme = await this.storage.get('theme') || 'light';
-    this.isDarkMode = savedTheme === 'dark';
-    document.body.setAttribute('color-theme', savedTheme);
 
-    this.settingsSubscription = this.settingsService.settings$.subscribe((settings) => {
-      this.updateTemperatureDisplays();
+    // Subscribe to all settings changes
+    this.settingsSubscription = this.settingsService.settings$.subscribe(settings => {
+      // Update dark mode
       this.isDarkMode = settings.darkMode;
+      document.body.setAttribute('color-theme', settings.darkMode ? 'dark' : 'light');
+
+      // Update temperature unit if changed
+      const newUnit = this.settingsService.getTemperatureUnit();
+      if (this.temperatureUnit !== newUnit) {
+        this.temperatureUnit = newUnit;
+        this.updateTemperatureDisplays();
+      }
+
+      // Handle any other settings that might be added in the future
+      this.applySettingsChanges(settings);
     });
 
     this.locationSubscription = this.weatherService.selectedLocation$.subscribe(location => {
@@ -81,8 +92,6 @@ export class HomePage implements OnInit, OnDestroy {
         this.getCurrentLocation();
       }
     });
-
-
   }
 
   ngOnDestroy() {
@@ -92,6 +101,15 @@ export class HomePage implements OnInit, OnDestroy {
     if (this.settingsSubscription) {
       this.settingsSubscription.unsubscribe();
     }
+  }
+
+  // Apply any settings changes to the UI
+  private applySettingsChanges(settings: any) {
+    // You can add more settings handling here as needed
+    // For example, if you add unit preferences for other measurements
+
+    // If there are any UI elements that depend on settings
+    // Update them here
   }
 
   async getCurrentLocation() {
@@ -125,16 +143,16 @@ export class HomePage implements OnInit, OnDestroy {
     this.getVisibilityData(latitude, longitude);
 
     this.weatherService.getHighLowTemperature(latitude, longitude)
-    .subscribe({
-      next: (result) => {
-        this.rawHighLow = result;
-        this.highTemperature = this.settingsService.formatTemperature(result.high, 'celsius');
-        this.lowTemperature = this.settingsService.formatTemperature(result.low, 'celsius');
-      },
-      error: (err) => {
-        console.error('Failed to fetch high/low temperatures:', err);
-      }
-    });
+      .subscribe({
+        next: (result) => {
+          this.rawHighLow = result;
+          this.highTemperature = this.settingsService.formatTemperature(result.high, this.temperatureUnit);
+          this.lowTemperature = this.settingsService.formatTemperature(result.low, this.temperatureUnit);
+        },
+        error: (err) => {
+          console.error('Failed to fetch high/low temperatures:', err);
+        }
+      });
 
     this.selectedLatitude = latitude;
     this.selectedLongitude = longitude;
@@ -158,6 +176,9 @@ export class HomePage implements OnInit, OnDestroy {
     if (storedWeeklyForecast) this.weeklyForecast = storedWeeklyForecast;
     if (storedHighTemp) this.highTemperature = storedHighTemp;
     if (storedLowTemp) this.lowTemperature = storedLowTemp;
+
+    // Initialize temperature unit from settings
+    this.temperatureUnit = this.settingsService.getTemperatureUnit();
   }
 
   async saveToStorage() {
@@ -171,35 +192,41 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   async updateTemperatureDisplays() {
+    const unit = this.temperatureUnit;
+
     if (this.rawTemperatureData.currentTemp || this.rawTemperatureData.currentTemp === 0) {
-      this.temperature = this.settingsService.formatTemperature(this.rawTemperatureData.currentTemp, 'celsius');
-      this.feelsLikeTemperature = this.settingsService.formatTemperature(this.rawTemperatureData.feelsLike, 'celsius');
+      this.temperature = this.settingsService.formatTemperature(this.rawTemperatureData.currentTemp, unit);
+      this.feelsLikeTemperature = this.settingsService.formatTemperature(this.rawTemperatureData.feelsLike, unit);
       this.feelsLikeDescription = await this.getFeelsLikeDescription(this.rawTemperatureData.currentTemp, this.rawTemperatureData.feelsLike);
-      this.dewPoint = `The dew point is ${this.settingsService.formatTemperature(this.rawTemperatureData.dewPointTemp, 'celsius')} right now.`;
+      this.dewPoint = `The dew point is ${this.settingsService.formatTemperature(this.rawTemperatureData.dewPointTemp, unit)} right now.`;
     }
 
-    if (this.rawTemperatureData.hourlyForecast && this.rawTemperatureData.hourlyForecast.length > 0) {
+    if (this.rawTemperatureData.hourlyForecast.length > 0) {
       this.hourlyForecast = this.rawTemperatureData.hourlyForecast.map(hour => ({
         time: hour.time,
-        temp: this.settingsService.formatTemperature(hour.temp, 'celsius'),
+        temp: this.settingsService.formatTemperature(hour.temp, unit),
         condition: hour.condition,
         hour: hour.hour,
         icon: hour.icon
       }));
     }
-    if (this.rawTemperatureData.weeklyForecast && this.rawTemperatureData.weeklyForecast.length > 0) {
+
+    if (this.rawTemperatureData.weeklyForecast.length > 0) {
       this.weeklyForecast = this.rawTemperatureData.weeklyForecast.map(item => ({
         day: item.day,
-        temp: this.settingsService.formatTemperature(item.temp, 'celsius'),
+        temp: this.settingsService.formatTemperature(item.temp, unit),
         icon: item.icon
       }));
     }
-    if (this.rawHighLow) {
-      this.highTemperature = this.settingsService.formatTemperature(this.rawHighLow.high, 'celsius');
-      this.lowTemperature = this.settingsService.formatTemperature(this.rawHighLow.low, 'celsius');
-    }
-  }
 
+    if (this.rawHighLow) {
+      this.highTemperature = this.settingsService.formatTemperature(this.rawHighLow.high, unit);
+      this.lowTemperature = this.settingsService.formatTemperature(this.rawHighLow.low, unit);
+    }
+
+    // Save updated displays to storage
+    await this.saveToStorage();
+  }
 
   getCityName(latitude: number, longitude: number) {
     if (this.locationCity) return;
@@ -213,7 +240,6 @@ export class HomePage implements OnInit, OnDestroy {
     );
   }
 
-  // Get current weather including high and low temperatures.
   async getTemperature(latitude: number, longitude: number) {
     this.weatherService.getWeatherData(latitude, longitude).subscribe(
       async (data) => {
@@ -228,12 +254,12 @@ export class HomePage implements OnInit, OnDestroy {
         this.rawTemperatureData.feelsLike = feelsLike;
         this.rawTemperatureData.dewPointTemp = dewPointTemp;
 
-        this.temperature = this.settingsService.formatTemperature(tempValue, 'celsius');
+        this.temperature = this.settingsService.formatTemperature(tempValue, this.temperatureUnit);
         this.weatherCondition = data.weather[0].description;
-        this.feelsLikeTemperature = this.settingsService.formatTemperature(feelsLike, 'celsius');
+        this.feelsLikeTemperature = this.settingsService.formatTemperature(feelsLike, this.temperatureUnit);
         this.feelsLikeDescription = await this.getFeelsLikeDescription(tempValue, feelsLike);
         this.humidity = `${humidity}%`;
-        this.dewPoint = `The dew point is ${this.settingsService.formatTemperature(dewPointTemp, 'celsius')} right now.`;
+        this.dewPoint = `The dew point is ${this.settingsService.formatTemperature(dewPointTemp, this.temperatureUnit)} right now.`;
 
         await this.saveToStorage();
         await this.storage.set('sunrise', this.sunrise);
@@ -250,44 +276,37 @@ export class HomePage implements OnInit, OnDestroy {
   async getHourlyWeather(latitude: number, longitude: number) {
     this.weatherService.getHourlyWeather(latitude, longitude).subscribe(
       async (data) => {
-        // Map the hourly forecast data
         this.rawTemperatureData.hourlyForecast = data.list.slice(0, 24).map((hourData: any) => {
-          const date = new Date(hourData.dt * 1000); // Convert timestamp to Date object
-          const hour = date.getHours(); // Get the hour for this forecasted time
-          const condition = hourData.weather[0].main; // Weather condition (e.g., clear, rain)
-
-          // Get the appropriate weather icon for this hour
-          const iconUrl = this.getWeatherIcon(condition, hour); // Pass hour to determine day/night icon
+          const date = new Date(hourData.dt * 1000);
+          const hour = date.getHours();
+          const condition = hourData.weather[0].main;
+          const iconUrl = this.getWeatherIcon(condition, hour);
 
           return {
-            time: date.toLocaleTimeString([], { hour: 'numeric', hour12: true }), // Format time (e.g., 1 PM)
-            hour: hour, // Store the numeric hour
-            temp: hourData.main.temp, // Temperature
-            condition: condition, // Weather condition
-            icon: iconUrl, // Icon for this hour
+            time: date.toLocaleTimeString([], { hour: 'numeric', hour12: true }),
+            hour: hour,
+            temp: hourData.main.temp,
+            condition: condition,
+            icon: iconUrl,
           };
         });
 
-        // Apply additional formatting and store the hourly forecast
         this.hourlyForecast = this.rawTemperatureData.hourlyForecast.map(hour => ({
           time: hour.time,
-          hour: hour.hour, // Include numeric hour for icon determination
-          temp: this.settingsService.formatTemperature(hour.temp, 'celsius'), // Format temperature
+          hour: hour.hour,
+          temp: this.settingsService.formatTemperature(hour.temp, this.temperatureUnit),
           condition: hour.condition,
-          icon: hour.icon // Include the icon for the hour
+          icon: hour.icon
         }));
 
-        // Store the hourly forecast in local storage for later use
         await this.storage.set('hourlyForecast', this.hourlyForecast);
       },
       async (error) => {
         console.log('Error fetching hourly weather: ' + error);
-        // Load from storage if there was an error
         this.hourlyForecast = (await this.storage.get('hourlyForecast')) || [];
       }
     );
   }
-
 
   async getWeeklyWeather(latitude: number, longitude: number) {
     this.weatherService.getWeeklyWeather(latitude, longitude).subscribe(
@@ -313,7 +332,7 @@ export class HomePage implements OnInit, OnDestroy {
         this.weeklyForecast = this.rawTemperatureData.weeklyForecast.map(day => ({
           day: day.day,
           icon: day.icon,
-          temp: this.settingsService.formatTemperature(day.temp, 'celsius')
+          temp: this.settingsService.formatTemperature(day.temp, this.temperatureUnit)
         }));
         await this.storage.set('weeklyForecast', this.weeklyForecast);
       },
@@ -331,7 +350,7 @@ export class HomePage implements OnInit, OnDestroy {
         let visibilityKm: string;
 
         if (visibilityMeters >= 10000) {
-          visibilityKm = '>10 km';  // Show that visibility is greater than 10 km
+          visibilityKm = '>10 km';
         } else {
           visibilityKm = `${Math.round(visibilityMeters / 1000)} km`;
         }
@@ -376,15 +395,12 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   formatTemp(temp: number | undefined): string {
-    return temp !== undefined ? this.settingsService.formatTemperature(temp, 'celsius') : 'N/A';
+    return temp !== undefined ? this.settingsService.formatTemperature(temp, this.temperatureUnit) : 'N/A';
   }
 
   getWeatherIcon(condition: string, hour: number): string {
-    let iconCode = '01'; // Default clear weather icon
-    const isDayTime = hour >= 6 && hour < 18; // Daytime from 6 AM to before 6 PM
-
-    console.log('Condition:', condition); // Log condition to see if it's correctly detected
-    console.log('Hour:', hour); // Log hour to ensure correct value
+    let iconCode = '01';
+    const isDayTime = hour >= 6 && hour < 18;
 
     switch (condition.toLowerCase()) {
       case 'clear':
@@ -398,28 +414,24 @@ export class HomePage implements OnInit, OnDestroy {
         iconCode = '09';
         break;
       case 'thunderstorm':
-        iconCode = '11';  // Thunderstorm
+        iconCode = '11';
         break;
       case 'snow':
-        iconCode = '13';  // Snowy
+        iconCode = '13';
         break;
       case 'mist':
       case 'fog':
-        iconCode = '50';  // Mist or fog
+        iconCode = '50';
         break;
       default:
-        iconCode = '01';  // Default to sunny
+        iconCode = '01';
         break;
     }
-
-    // Check if it's day or night and adjust the icon accordingly
-    const dayNight = isDayTime ? 'd' : 'n';  // 'd' for day, 'n' for night
+    const dayNight = isDayTime ? 'd' : 'n';
     const iconUrl = `https://openweathermap.org/img/wn/${iconCode}${dayNight}@2x.png`;
-    console.log('Icon URL:', iconUrl);
 
     return iconUrl;
   }
-
 
   async getFeelsLikeDescription(actualTemp: number, feelsLike: number): Promise<string> {
     const difference = Math.abs(actualTemp - feelsLike);

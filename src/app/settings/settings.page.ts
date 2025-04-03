@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { SettingsService  } from '../services/settings.service';
-import { Storage } from '@ionic/storage-angular';
+import { SettingsService } from '../services/settings.service';
+import { Preferences } from '@capacitor/preferences';
+
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
@@ -11,48 +12,44 @@ export class SettingsPage implements OnInit {
   isDarkMode: boolean = false;
   temperatureUnit: 'celsius' | 'fahrenheit' = 'celsius';
 
-  constructor(private settingsService: SettingsService, private storage: Storage) { this.initStorage(); }
-
-  async initStorage() {
-    await this.storage.create();
-  }
+  constructor(private settingsService: SettingsService) {}
 
   async ngOnInit() {
+    await this.loadSettings();
   }
 
-
   async ionViewWillEnter() {
-    const currentTheme = await this.storage.get('theme') || 'light';
-    this.isDarkMode = currentTheme === 'dark';
+    await this.loadSettings();
+  }
 
-    const currentTempUnit = await this.storage.get('temperatureUnit') || 'celsius';
-    this.temperatureUnit = currentTempUnit as 'celsius' | 'fahrenheit';
+  async loadSettings() {
+    const theme = (await Preferences.get({ key: 'theme' })).value || 'light';
+    this.isDarkMode = theme === 'dark';
+    const tempUnit = (await Preferences.get({ key: 'temperatureUnit' })).value || 'celsius';
+    this.temperatureUnit = tempUnit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
   }
 
   async toggleTheme(event: any) {
-    const isChecked = event.detail.checked;
-    const theme = isChecked ? 'dark' : 'light';
-    this.settingsService.updateSettings({ darkMode: isChecked });
+    this.isDarkMode = event.detail.checked;
+    const theme = this.isDarkMode ? 'dark' : 'light';
+    this.settingsService.setDarkMode({ darkMode: this.isDarkMode });
     document.body.setAttribute('color-theme', theme);
-
-    await this.storage.set('theme', theme);
-    this.isDarkMode = isChecked;
+    await Preferences.set({ key: 'theme', value: theme });
   }
 
   async toggleTemperatureUnit(event: any) {
     const useCelsius = event.detail.checked;
-    const temperatureUnit = useCelsius ? 'celsius' : 'fahrenheit';
-    this.settingsService.updateSettings({ temperatureUnit });
-
-    await this.storage.set('temperatureUnit', temperatureUnit);
+    this.temperatureUnit = useCelsius ? 'celsius' : 'fahrenheit';
+    this.settingsService.updateSettings({ temperatureUnit: this.temperatureUnit });
+    await Preferences.set({ key: 'temperatureUnit', value: this.temperatureUnit });
   }
 
   async temperatureUnitChanged(event: any) {
     const selectedValue = event.detail.value;
     if (selectedValue === 'celsius' || selectedValue === 'fahrenheit') {
-      this.settingsService.updateSettings({ temperatureUnit: selectedValue });
-
-      await this.storage.set('temperatureUnit', selectedValue);
+      this.temperatureUnit = selectedValue;
+      this.settingsService.updateSettings({ temperatureUnit: this.temperatureUnit });
+      await Preferences.set({ key: 'temperatureUnit', value: this.temperatureUnit });
     }
   }
 }
