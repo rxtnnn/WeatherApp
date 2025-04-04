@@ -3,8 +3,9 @@ import { Geolocation } from '@capacitor/geolocation';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment.prod';
 import { Storage } from '@ionic/storage-angular';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { catchError, shareReplay, tap, map } from 'rxjs/operators';
+import { Observable, BehaviorSubject, throwError, from } from 'rxjs';
+import { catchError, shareReplay, tap, map, switchMap } from 'rxjs/operators';
+import { Network } from '@capacitor/network';
 
 @Injectable({
   providedIn: 'root',
@@ -15,16 +16,15 @@ export class WeatherService implements OnDestroy {
   public loading$ = this.loadingSubject.asObservable();
   private selectedLocationSubject = new BehaviorSubject<{ latitude: number, longitude: number, city?: string } | null>(null);
   public selectedLocation$ = this.selectedLocationSubject.asObservable();
-  constructor(private http: HttpClient, private storage: Storage) { }
 
-  async ngOnInit() {
-    await this.initStorage();
+  constructor(private http: HttpClient, private storage: Storage) {this.initStorage(); }
+
+  async initialize(){
     try {
       const { latitude, longitude } = await this.getCurrentLocation();
       this.getWeatherData(latitude, longitude);
     } catch (error) {
-      console.warn('Could not retrieve current location.');
-      console.log('Unable to get your current location. Please select a location manually.');
+      alert('Could not retrieve current location.');
     }
   }
 
@@ -43,11 +43,16 @@ export class WeatherService implements OnDestroy {
       const coordinates = await Geolocation.getCurrentPosition();
       return { latitude: coordinates.coords.latitude, longitude: coordinates.coords.longitude };
     } catch (error) {
-      console.log('Error getting location: ', error);
+      alert('Error getting location:'+ error);
       throw error;
     } finally {
       this.loadingSubject.next(false);
     }
+  }
+
+  async isOnline(): Promise<boolean> {
+    const status = await Network.getStatus();
+    return status.connected;
   }
 
   setSelectedLocation(latitude: number, longitude: number, city?: string) {
@@ -60,28 +65,36 @@ export class WeatherService implements OnDestroy {
     return this.http.get<any>(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
       .pipe(
         catchError(error => {
-          console.log('Error fetching city name: ', error);
           return throwError(() => new Error('Failed to get city name.'));
         })
       );
   }
 
-  private fetchDataWithCache(endpoint: string, cacheKey: string): Observable<any> {
-    return new Observable(observer => {
-      this.storage.get(cacheKey).then((cachedData) => {
-        if (cachedData) {
-          observer.next(cachedData.data);
-          observer.complete();
+  private fetchDataWithCache(endpoint: string, cacheKey: string, maxAge = 10 * 60 * 1000): Observable<any> {
+    return from(this.isOnline()).pipe(
+      switchMap(isOnline => {
+        if (!isOnline) {
+          // Return cached data when offline
+          return from(this.storage.get(cacheKey)).pipe(
+            map(cachedData => {
+              if (cachedData && Date.now() - cachedData.timestamp < maxAge) {
+                return cachedData.data;
+              }
+              throw new Error('No valid cached data available');
+            })
+          );
         } else {
-          this.http.get<any>(endpoint).pipe(
+          // Fetch from API when online
+          return this.http.get<any>(endpoint).pipe(
             tap(data => this.storage.set(cacheKey, { data, timestamp: Date.now() })),
             catchError(error => {
-              return throwError(() => new Error('No offline data available'));
+              console.log('Error fetching data:', error);
+              return throwError(() => new Error('Failed to fetch data.'));
             })
-          ).subscribe(observer);
+          );
         }
-      });
-    }).pipe(shareReplay(1));
+      })
+    );
   }
 
   getWeatherData(latitude: number, longitude: number): Observable<any> {
@@ -89,12 +102,11 @@ export class WeatherService implements OnDestroy {
 
     return this.http.get<any>(url).pipe(
       map(data => {
-        if (data?.main){
+        if (data?.main) {
           const { sunrise, sunset } = data.sys || {};
-
           const convertUnixToLocalTime = (timestamp: number) => {
             const date = new Date(timestamp * 1000);
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
           };
 
           return {
@@ -106,6 +118,7 @@ export class WeatherService implements OnDestroy {
         return data;
       }),
       catchError(error => {
+        console.error('Error fetching weather data: ', error);
         return throwError(() => new Error('Failed to fetch weather data.'));
       })
     );
@@ -120,11 +133,6 @@ export class WeatherService implements OnDestroy {
     const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
     const cacheKey = `weather_${latitude.toFixed(6)}_${longitude.toFixed(6)}`;
     return this.fetchDataWithCache(url, cacheKey);
-  }
-
-  getPrecipitationData(latitude: number, longitude: number): Observable<any> {
-    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
-    return this.fetchDataWithCache(url, `precipitation_${latitude}_${longitude}`);
   }
 
   getVisibilityData(latitude: number, longitude: number): Observable<any> {

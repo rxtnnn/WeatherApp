@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { WeatherService } from '../services/weather.service';
 import { SettingsService } from '../services/settings.service';
-import { Subscription } from 'rxjs';
+import { Observable, Subject, Subscription, takeUntil } from 'rxjs';
 import { Storage } from '@ionic/storage-angular';
 import { Network } from '@capacitor/network';
 
@@ -40,6 +40,7 @@ export class HomePage implements OnInit, OnDestroy {
   networkMessage: string = '';
   temperatureUnit: 'celsius' | 'fahrenheit' = 'celsius';
   private rawHighLow?: { high: number; low: number };
+
   private rawTemperatureData = {
     currentTemp: 0,
     feelsLike: 0,
@@ -48,12 +49,16 @@ export class HomePage implements OnInit, OnDestroy {
     weeklyForecast: [] as { day: string; icon: string; temp: number }[]
   };
 
+  selectedLocation$: Observable<{ latitude: number, longitude: number, city?: string } | null>;
+  private destroy$ = new Subject<void>();
+
   constructor(
     private weatherService: WeatherService,
     private settingsService: SettingsService,
     private storage: Storage
   ) {
     this.initStorage();
+    this.selectedLocation$ = this.weatherService.selectedLocation$.pipe(takeUntil(this.destroy$));
   }
 
   async initStorage() {
@@ -61,21 +66,20 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    await this.getCurrentLocation();
+    await this.weatherService.initialize();
     await this.loadStoredData();
 
+    // Check online status
+    this.isOnline = (await Network.getStatus()).connected;
     this.currentDate = new Date().toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
     });
 
-    // Subscribe to all settings changes
     this.settingsSubscription = this.settingsService.settings$.subscribe(settings => {
-      // Update dark mode
       this.isDarkMode = settings.darkMode;
       document.body.setAttribute('color-theme', settings.darkMode ? 'dark' : 'light');
 
-      // Update temperature unit if changed
       const newUnit = this.settingsService.getTemperatureUnit();
       if (this.temperatureUnit !== newUnit) {
         this.temperatureUnit = newUnit;
@@ -92,17 +96,23 @@ export class HomePage implements OnInit, OnDestroy {
     });
 
     Network.addListener('networkStatusChange', async (status) => {
+      const wasOffline = !this.isOnline;
       this.isOnline = status.connected;
 
-      if (this.isOnline) {
-        alert('Your internet connection was restored.');
-        if (this.selectedLatitude && this.selectedLongitude) {
-          this.fetchWeatherData(this.selectedLatitude, this.selectedLongitude, this.locationCity);
-        } else {
-          await this.getCurrentLocation();
+      if (this.isOnline && wasOffline) { //checks if currently online and prev offline
+        alert('Internet connection restored.');
+        const confirmRefresh = confirm('Internet restored. Refresh weather data?');
+
+        if (confirmRefresh) {
+          if (this.selectedLatitude && this.selectedLongitude) { //it fetch if naay selected location
+            this.fetchWeatherData(this.selectedLatitude, this.selectedLongitude, this.locationCity);
+          } else {
+            await this.getCurrentLocation();
+          }
         }
-      } else {
-        alert('You are offline. Check your connection.');
+      } else if (!this.isOnline) { //if offline
+        console.log('You are offline. Using cached data.');
+        this.loadStoredData();
       }
     });
   }
@@ -112,7 +122,6 @@ export class HomePage implements OnInit, OnDestroy {
     if (this.settingsSubscription) { this.settingsSubscription.unsubscribe(); }
     Network.removeAllListeners();
   }
-
 
   async getCurrentLocation() {
     try {
@@ -190,6 +199,8 @@ export class HomePage implements OnInit, OnDestroy {
     await this.storage.set('weeklyForecast', this.weeklyForecast);
     await this.storage.set('highTemperature', this.highTemperature);
     await this.storage.set('lowTemperature', this.lowTemperature);
+    await this.storage.set('sunrise', this.sunrise);
+    await this.storage.set('sunset', this.sunset);
   }
 
   async updateTemperatureDisplays() {
@@ -262,11 +273,12 @@ export class HomePage implements OnInit, OnDestroy {
         this.dewPoint = `The dew point is ${this.settingsService.formatTemperature(dewPointTemp, this.temperatureUnit)} right now.`;
 
         await this.saveToStorage();
-        await this.storage.set('sunrise', this.sunrise);
-        await this.storage.set('sunset', this.sunset);
-      },
-      async () => {
+
+      },async () => { //a fallback if user went offline
         this.temperature = (await this.storage.get('temperature')) || 'N/A';
+        this.feelsLikeTemperature = (await this.storage.get('feelsLikeTemperature')) || 'N/A';
+        this.humidity = (await this.storage.get('humidity')) || 'N/A';
+        this.dewPoint = (await this.storage.get('dewPoint')) || 'N/A';
         this.sunrise = (await this.storage.get('sunrise')) || 'N/A';
         this.sunset = (await this.storage.get('sunset')) || 'N/A';
       }
@@ -324,7 +336,7 @@ export class HomePage implements OnInit, OnDestroy {
           const dayEntries = dailyData[day];
           const maxTemp = Math.max(...dayEntries.map((entry) => entry.main.temp));
           const condition = dayEntries[0].weather[0].main;
-          const icon = this.getWeatherIcon(condition, 24);
+          const icon = this.getWeatherIcon(condition, 12);
           return { day, icon, temp: maxTemp };
         });
 

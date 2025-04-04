@@ -18,10 +18,6 @@ export class SettingsPage implements OnInit {
     await this.loadSettings();
   }
 
-  async ionViewWillEnter() {
-    await this.loadSettings();
-  }
-
   async loadSettings() {
     const theme = (await Preferences.get({ key: 'theme' })).value || 'light';
     this.isDarkMode = theme === 'dark';
@@ -35,13 +31,6 @@ export class SettingsPage implements OnInit {
     this.settingsService.setDarkMode({ darkMode: this.isDarkMode });
     document.body.setAttribute('color-theme', theme);
     await Preferences.set({ key: 'theme', value: theme });
-  }
-
-  async toggleTemperatureUnit(event: any) {
-    const useCelsius = event.detail.checked;
-    this.temperatureUnit = useCelsius ? 'celsius' : 'fahrenheit';
-    this.settingsService.updateSettings({ temperatureUnit: this.temperatureUnit });
-    await Preferences.set({ key: 'temperatureUnit', value: this.temperatureUnit });
   }
 
   async temperatureUnitChanged(event: any) {

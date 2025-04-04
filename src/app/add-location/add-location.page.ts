@@ -8,6 +8,7 @@ import { environment } from '../../environments/environment';
 import { IonItemSliding } from '@ionic/angular';
 import { SettingsService } from '../services/settings.service';
 import { Storage } from '@ionic/storage-angular';
+import { Network } from '@capacitor/network';
 
 interface Location {
   name: string;
@@ -40,6 +41,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
   savedLocations: Location[] = [];
   errorMessage = '';
   selectionMode = false;
+  isOnline: boolean = true;
   isDarkMode?: boolean;
   private destroy$ = new Subject<void>();
   private weatherApiKey = environment.weatherApiKey;
@@ -60,14 +62,34 @@ export class AddLocationPage implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    await this.getCurrentLocation();
+    await this.weatherService.initialize();
+    await this.initStorage();
+    this.isOnline = (await Network.getStatus()).connected;
     await this.loadFromStorage();
     this.refreshSavedLocations();
 
     this.settingsSubscription = this.settingsService.settings$.subscribe(settings => {
       this.isDarkMode = settings.darkMode;
       document.body.setAttribute('color-theme', settings.darkMode ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark-mode', this.isDarkMode);
       this.updateTemperatureDisplay();
+    });
+
+    Network.addListener('networkStatusChange', async (status) => {
+      const wasOnline = this.isOnline;
+      this.isOnline = status.connected;
+
+      if (wasOnline !== this.isOnline) { // Only show alerts when status actually changes
+        if (this.isOnline) {
+          const confirmRefresh = confirm('Internet restored. Refresh weather data?');
+          if (confirmRefresh) {
+            await this.refreshSavedLocations();
+            await this.getCurrentLocation();
+          }
+        } else {
+          alert('You are offline. Check your connection.');
+        }
+      }
     });
   }
 
@@ -80,13 +102,11 @@ export class AddLocationPage implements OnInit, OnDestroy {
     try {
       const { latitude, longitude } = await this.weatherService.getCurrentLocation();
       const cityData = await this.weatherService.getCityName(latitude, longitude).toPromise();
-      const cityName = cityData.address.city || 'Unknown';
-      const countryName = cityData.address.country || '';
       const weatherData = await this.weatherService.getWeatherData(latitude, longitude).toPromise();
 
-      const location: Location = {
-        name: cityName,
-        country: countryName,
+      this.currentLocation = { // Update UI immediately
+        name: cityData.address.city || 'Unknown',
+        country: cityData.address.country || '',
         lat: latitude,
         lon: longitude,
         isCurrentLocation: true,
@@ -94,17 +114,14 @@ export class AddLocationPage implements OnInit, OnDestroy {
       };
 
       const result = await this.weatherService.getHighLowTemperature(latitude, longitude).toPromise();
-      if (result && result.high !== undefined && result.low !== undefined) {
-        location.high = Math.round(result.high);
-        location.low = Math.round(result.low);
-      } else {
-        this.errorMessage = 'Could not fetch high temperature data';
+      if (result) {
+        this.currentLocation.high = Math.round(result.high);
+        this.currentLocation.low = Math.round(result.low);
       }
-      await this.storage.set('currentLocation', location);
-      this.currentLocation = location;
 
+      await this.storage.set('currentLocation', this.currentLocation);
     } catch (error) {
-      this.errorMessage = 'Could not determine your location or fetch weather data.';
+      console.warn('Could not update current location:', error);
     }
   }
 
@@ -164,7 +181,6 @@ export class AddLocationPage implements OnInit, OnDestroy {
                 location.high = Math.round(result.high);
                 location.low = Math.round(result.low);
 
-                // Add these lines to update formatted temperature values
                 const unit = this.settingsService.getTemperatureUnit();
                 location.formattedTemp = this.settingsService.formatTemperature(location.temp!, unit);
                 location.formattedHigh = this.settingsService.formatTemperature(location.high, unit);
@@ -198,7 +214,6 @@ export class AddLocationPage implements OnInit, OnDestroy {
         this.router.navigateByUrl('/home');
       },
         error: (error) => {
-        alert('Error updating weather before navigation:' + error);
         this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
         this.router.navigateByUrl('/home');
       }
@@ -221,6 +236,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
                   next: async (forecastData: any) => {
                     if (forecastData && forecastData.list) {
                       const temps = forecastData.list.map((entry: any) => entry.main.temp);
+                      location.temp = Math.round(forecastData.list[0].main.temp);
                       location.high = Math.round(Math.max(...temps));
                       location.low = Math.round(Math.min(...temps));
                     }
@@ -233,6 +249,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
           error: () => alert(`Failed to refresh current weather for ${location.name}`)
         });
     });
+    await this.getCurrentLocation();
   }
 
   addLocation() {
@@ -265,18 +282,17 @@ export class AddLocationPage implements OnInit, OnDestroy {
   }
 
   async loadFromStorage() {
-    const storedLocations = await this.storage.get('savedLocations');
-    if (storedLocations) {
-      this.savedLocations = storedLocations;
-    }
-
     const storedCurrentLocation = await this.storage.get('currentLocation');
     if (storedCurrentLocation) {
-      this.currentLocation = storedCurrentLocation;
+      this.currentLocation = storedCurrentLocation; // Load cached location
     }
 
-    this.refreshSavedLocations();
+    // Fetch fresh data after loading from cache
+    if (this.currentLocation.lat && this.currentLocation.lon) {
+      await this.getCurrentLocation();
+    }
   }
+
 
   deleteLocation(index: number, slidingItem: IonItemSliding) {
     slidingItem.close();
@@ -290,6 +306,8 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
   updateTemperatureDisplay() {
     const unit = this.settingsService.getTemperatureUnit();
+    this.settingsService.setTemperatureUnit(unit); // Ensure it's correctly set
+
     const formatTemp = (temp?: number) =>
       temp !== undefined ? this.settingsService.formatTemperature(temp, unit) : undefined;
 
@@ -301,5 +319,4 @@ export class AddLocationPage implements OnInit, OnDestroy {
       location.formattedLow = formatTemp(location.low);
     });
   }
-
 }

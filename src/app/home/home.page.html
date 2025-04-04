@@ -2,7 +2,7 @@
   <div class="home-container">
     <div class="weather-location-container">
       <div class="location-header">
-        <h1 class="location-name">{{ isCurrentLocation ? 'My Location' : '' }}</h1>
+        <h1 class="location-name" *ngIf="isCurrentLocation">My Location</h1>
         <p class="location-city">{{ locationCity }}</p>
       </div>
 
