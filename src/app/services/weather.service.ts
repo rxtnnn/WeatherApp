@@ -40,7 +40,10 @@ export class WeatherService implements OnDestroy {
   async getCurrentLocation(): Promise<{ latitude: number; longitude: number }> {
     try {
       this.loadingSubject.next(true);
-      const coordinates = await Geolocation.getCurrentPosition();
+      const coordinates = await Geolocation.getCurrentPosition({
+      timeout: 10000,  // Timeout in milliseconds (Increase this value to wait longer)
+      enableHighAccuracy: true,  // Optional: Try to use the most accurate location
+       });
       return { latitude: coordinates.coords.latitude, longitude: coordinates.coords.longitude };
     } catch (error) {
       alert('Error getting location:'+ error);

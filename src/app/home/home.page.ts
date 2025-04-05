@@ -99,19 +99,15 @@ export class HomePage implements OnInit, OnDestroy {
       const wasOffline = !this.isOnline;
       this.isOnline = status.connected;
 
-      if (this.isOnline && wasOffline) { //checks if currently online and prev offline
+      if (this.isOnline && wasOffline) {
         alert('Internet connection restored.');
-        const confirmRefresh = confirm('Internet restored. Refresh weather data?');
-
-        if (confirmRefresh) {
-          if (this.selectedLatitude && this.selectedLongitude) { //it fetch if naay selected location
+          if (this.selectedLatitude && this.selectedLongitude) {
             this.fetchWeatherData(this.selectedLatitude, this.selectedLongitude, this.locationCity);
           } else {
             await this.getCurrentLocation();
           }
-        }
       } else if (!this.isOnline) { //if offline
-        console.log('You are offline. Using cached data.');
+        alert('You are offline.');
         this.loadStoredData();
       }
     });
