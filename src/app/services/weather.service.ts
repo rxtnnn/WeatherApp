@@ -113,8 +113,8 @@ export class WeatherService implements OnDestroy {
   private fetchDataWithCache(endpoint: string, cacheKey: string, maxAge = 10 * 60 * 1000): Observable<any> {
     return from(this.isOnline()).pipe(
       switchMap(isOnline => {
+        // Return cached data when offline
         if (!isOnline) {
-          // Return cached data when offline
           return from(this.storage.get(cacheKey)).pipe(
             map(cachedData => {
               if (cachedData && Date.now() - cachedData.timestamp < maxAge) {
