@@ -52,11 +52,9 @@ export class SettingsService {
     return `${Math.round(temp)}°`;
   }
 
-  async updateSettings(settings: { temperatureUnit?: 'celsius' | 'fahrenheit' }) {
-    if (settings.temperatureUnit) {
-      this.settings.temperatureUnit = settings.temperatureUnit;
-      await Preferences.set({ key: 'temperatureUnit', value: settings.temperatureUnit });
-    }
-    this.settingsSubject.next(this.settings);
+  async updateSettings(settings: { temperatureUnit: 'celsius' | 'fahrenheit' }) {
+    this.settings.temperatureUnit = settings.temperatureUnit;
+    await Preferences.set({ key: 'temperatureUnit', value: settings.temperatureUnit });
+    this.settingsSubject.next(this.settings); //to emit new values
   }
 }

@@ -99,15 +99,18 @@ export class HomePage implements OnInit, OnDestroy {
       const wasOffline = !this.isOnline;
       this.isOnline = status.connected;
 
-      if (this.isOnline && wasOffline) {
+      if (this.isOnline && wasOffline) { //checks if currently online and prev offline
         alert('Internet connection restored.');
-          if (this.selectedLatitude && this.selectedLongitude) {
+        const confirmRefresh = confirm('Internet restored. Refresh weather data?');
+
+        if (confirmRefresh) {
+          if (this.selectedLatitude && this.selectedLongitude) { //it fetch if naay selected location
             this.fetchWeatherData(this.selectedLatitude, this.selectedLongitude, this.locationCity);
           } else {
             await this.getCurrentLocation();
           }
-      } else if (!this.isOnline) { //if offline
-        alert('You are offline.');
+        }
+      } else if (!this.isOnline) {
         this.loadStoredData();
       }
     });
@@ -138,7 +141,6 @@ export class HomePage implements OnInit, OnDestroy {
 
       this.fetchWeatherData(latitude, longitude);
     } catch (error) {
-      console.log('Error getting location or weather data');
       this.loadStoredData();
     }
   }
@@ -175,6 +177,11 @@ export class HomePage implements OnInit, OnDestroy {
     const storedWeeklyForecast = await this.storage.get('weeklyForecast');
     const storedHighTemp = await this.storage.get('highTemperature');
     const storedLowTemp = await this.storage.get('lowTemperature');
+    const storedVisibility = await this.storage.get('visibility');
+    const storedFeelsLike = await this.storage.get('feelsLikeTemperature');
+    const storedFeelsLikeDesc = await this.storage.get('feelsLikeDescription');
+    const storedHumidity = await this.storage.get('humidity');
+    const storedDewPoint = await this.storage.get('dewPoint');
 
     if (storedCity) this.locationCity = storedCity;
     if (storedTemperature) this.temperature = storedTemperature;
@@ -183,6 +190,11 @@ export class HomePage implements OnInit, OnDestroy {
     if (storedWeeklyForecast) this.weeklyForecast = storedWeeklyForecast;
     if (storedHighTemp) this.highTemperature = storedHighTemp;
     if (storedLowTemp) this.lowTemperature = storedLowTemp;
+    if (storedVisibility) this.visibility = storedVisibility;
+    if (storedFeelsLike) this.feelsLikeTemperature = storedFeelsLike;
+    if (storedFeelsLikeDesc) this.feelsLikeDescription = storedFeelsLikeDesc;
+    if (storedHumidity) this.humidity = storedHumidity;
+    if (storedDewPoint) this.dewPoint = storedDewPoint;
 
     this.temperatureUnit = this.settingsService.getTemperatureUnit();
   }
@@ -197,6 +209,10 @@ export class HomePage implements OnInit, OnDestroy {
     await this.storage.set('lowTemperature', this.lowTemperature);
     await this.storage.set('sunrise', this.sunrise);
     await this.storage.set('sunset', this.sunset);
+    await this.storage.set('visibility', this.visibility);
+    await this.storage.set('feelsLikeTemperature', this.feelsLikeTemperature);
+    await this.storage.set('feelsLikeDescription', this.feelsLikeDescription);
+    await this.storage.set('humidity', this.humidity);
   }
 
   async updateTemperatureDisplays() {
@@ -271,12 +287,7 @@ export class HomePage implements OnInit, OnDestroy {
         await this.saveToStorage();
 
       },async () => { //a fallback if user went offline
-        this.temperature = (await this.storage.get('temperature')) || 'N/A';
-        this.feelsLikeTemperature = (await this.storage.get('feelsLikeTemperature')) || 'N/A';
-        this.humidity = (await this.storage.get('humidity')) || 'N/A';
-        this.dewPoint = (await this.storage.get('dewPoint')) || 'N/A';
-        this.sunrise = (await this.storage.get('sunrise')) || 'N/A';
-        this.sunset = (await this.storage.get('sunset')) || 'N/A';
+        await this.loadStoredData();
       }
     );
   }
@@ -309,9 +320,8 @@ export class HomePage implements OnInit, OnDestroy {
 
         await this.storage.set('hourlyForecast', this.hourlyForecast);
       },
-      async (error) => {
-        console.log('Error fetching hourly weather: ' + error);
-        this.hourlyForecast = (await this.storage.get('hourlyForecast')) || [];
+      async () => {
+        await this.loadStoredData();
       }
     );
   }
@@ -344,9 +354,8 @@ export class HomePage implements OnInit, OnDestroy {
         }));
         await this.storage.set('weeklyForecast', this.weeklyForecast);
       },
-      async (error) => {
-        console.log('Error fetching weekly weather: ' + error);
-        this.weeklyForecast = (await this.storage.get('weeklyForecast')) || [];
+      async () => {
+        await this.loadStoredData();
       }
     );
   }
@@ -369,9 +378,8 @@ export class HomePage implements OnInit, OnDestroy {
         await this.storage.set('visibility', this.visibility);
         await this.storage.set('visibilityDescription', this.visibilityDescription);
       },
-      async (error) => {
-        this.visibility = (await this.storage.get('visibility')) || 'N/A';
-        this.visibilityDescription = (await this.storage.get('visibilityDescription')) || 'No Data';
+      async () => {
+        await this.loadStoredData();
       }
     );
   }
@@ -451,6 +459,7 @@ export class HomePage implements OnInit, OnDestroy {
     const alpha = ((a * temp) / (b + temp)) + Math.log(humidity / 100);
     return Math.trunc((b * alpha) / (a - alpha));
   }
+
   getVisibilityDescription(visibilityKm: number): string {
     if (visibilityKm >= 10) return 'Perfectly clear view';
     if (visibilityKm >= 5) return 'Good visibility';

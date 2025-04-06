@@ -57,13 +57,16 @@ export class AddLocationPage implements OnInit, OnDestroy {
     this.initStorage();
   }
 
+  async initStorage() {
+    await this.storage.create();
+  }
+
   async ngOnInit() {
     await this.weatherService.initialize();
     await this.initStorage();
     this.isOnline = (await Network.getStatus()).connected;
     await this.loadFromStorage();
-
-    await this.refreshWeatherData();
+    this.refreshLocations();
 
     this.settingsSubscription = this.settingsService.settings$.subscribe(settings => {
       this.isDarkMode = settings.darkMode;
@@ -78,10 +81,14 @@ export class AddLocationPage implements OnInit, OnDestroy {
 
       if (wasOnline !== this.isOnline) { // Only show alerts when status actually changes
         if (this.isOnline) {
-          alert('Internet connection restored.');
+          const confirmRefresh = confirm('Internet restored. Refresh weather data?');
+          if (confirmRefresh) {
+            await this.refreshLocations();
+            await this.getCurrentLocation();
+          }
         } else {
           alert('You are offline. Check your connection.');
-          this.loadFromStorage();
+          await this.loadFromStorage();
         }
       }
     });
@@ -90,16 +97,6 @@ export class AddLocationPage implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-    Network.removeAllListeners();
-  }
-
-  async initStorage() {
-    await this.storage.create();
-  }
-
-  async refreshWeatherData() {
-    await this.refreshSavedLocations();
-    await this.getCurrentLocation();
   }
 
   async getCurrentLocation() {
@@ -108,7 +105,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
       const cityData = await this.weatherService.getCityName(latitude, longitude).toPromise();
       const weatherData = await this.weatherService.getWeatherData(latitude, longitude).toPromise();
 
-      this.currentLocation = {
+      this.currentLocation = { // Update UI immediately
         name: cityData.address.city || 'Unknown',
         country: cityData.address.country || '',
         lat: latitude,
@@ -122,9 +119,10 @@ export class AddLocationPage implements OnInit, OnDestroy {
         this.currentLocation.high = Math.round(result.high);
         this.currentLocation.low = Math.round(result.low);
       }
+
       await this.storage.set('currentLocation', this.currentLocation);
     } catch (error) {
-      alert('Could not update current location:'+ error);
+      console.warn('Could not update current location:', error);
     }
   }
 
@@ -195,6 +193,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
                   this.savedLocations = [...this.savedLocations, location];
                   this.saveToStorage();
                 }
+                this.updateTemperatureDisplay();
               },
               error: () => {
                 this.errorMessage = 'Could not fetch forecast data for temperature.';
@@ -223,7 +222,9 @@ export class AddLocationPage implements OnInit, OnDestroy {
     });
   }
 
-  async refreshSavedLocations() {
+  async refreshLocations() {
+    if (this.savedLocations.length === 0) return;
+
     this.savedLocations.forEach(location => {
       this.weatherService.getWeatherData(location.lat, location.lon)
         .pipe(take(1))
@@ -237,11 +238,11 @@ export class AddLocationPage implements OnInit, OnDestroy {
                   next: async (forecastData: any) => {
                     if (forecastData && forecastData.list) {
                       const temps = forecastData.list.map((entry: any) => entry.main.temp);
-                      location.temp = Math.round(forecastData.list[0].main.temp);
                       location.high = Math.round(Math.max(...temps));
                       location.low = Math.round(Math.min(...temps));
                     }
                     await this.saveToStorage();
+                    this.updateTemperatureDisplay();
                   },
                   error: () => alert(`Failed to refresh forecast for ${location.name}`)
                 });
@@ -251,6 +252,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
         });
     });
     await this.getCurrentLocation();
+    this.updateTemperatureDisplay();
   }
 
   addLocation() {
@@ -261,6 +263,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
     this.searchedLocation.formattedHigh = '';
     this.searchedLocation.formattedLow = '';
     this.fetchWeatherData(this.searchedLocation);
+    this.saveToStorage();
     this.clearSearch();
   }
 
@@ -279,7 +282,8 @@ export class AddLocationPage implements OnInit, OnDestroy {
   }
 
   async saveToStorage() {
-    await this.storage.set('savedLocations', this.savedLocations);
+   await this.storage.set('savedLocations', this.savedLocations);
+  await this.storage.set('currentLocation', this.currentLocation);
   }
 
   async loadFromStorage() {
@@ -292,6 +296,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
     if (storedSavedLocations) {
       this.savedLocations = storedSavedLocations;
     }
+    this.updateTemperatureDisplay();
   }
 
   deleteLocation(index: number, slidingItem: IonItemSliding) {
@@ -312,6 +317,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
       temp !== undefined ? this.settingsService.formatTemperature(temp, unit) : undefined;
 
     const allLocations = [...this.savedLocations, this.currentLocation];
+
     allLocations.forEach(location => {
       location.formattedTemp = formatTemp(location.temp);
       location.formattedHigh = formatTemp(location.high);

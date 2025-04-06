@@ -36,6 +36,7 @@
                 <div class="location-info">
                   <div class="location-name">
                     <h2 class="fw-bold">{{ location.isCurrentLocation ? 'My Location' : location.name }}</h2>
+                    <p *ngIf="location.isCurrentLocation">{{ location.name }}</p>
                     <p>{{ location.country }}</p>
                   </div>
                   <div class="temperature">
@@ -64,7 +65,7 @@
               <ion-label>
                 <div class="location-info">
                   <div class="location-name">
-                    <h2 class="fw-bold">My Location</h2>
+                    <h2 class="fw-bold" *ngIf = "currentLocation?.isCurrentLocation"> My Location </h2>
                     <h3>{{ currentLocation.name }}</h3>
                     <p>{{ currentLocation.country }}</p>
                   </div>

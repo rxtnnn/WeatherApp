@@ -35,10 +35,9 @@ export class SettingsPage implements OnInit {
 
   async temperatureUnitChanged(event: any) {
     const selectedValue = event.detail.value;
-    if (selectedValue === 'celsius' || selectedValue === 'fahrenheit') {
-      this.temperatureUnit = selectedValue;
-      this.settingsService.updateSettings({ temperatureUnit: this.temperatureUnit });
-      await Preferences.set({ key: 'temperatureUnit', value: this.temperatureUnit });
-    }
+    this.temperatureUnit = selectedValue;
+    this.settingsService.updateSettings({ temperatureUnit: this.temperatureUnit });
+    await Preferences.set({ key: 'temperatureUnit', value: this.temperatureUnit });
+
   }
 }

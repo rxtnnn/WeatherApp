@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment.prod';
 import { Storage } from '@ionic/storage-angular';
 import { Observable, BehaviorSubject, throwError, from } from 'rxjs';
-import { catchError, shareReplay, tap, map, switchMap } from 'rxjs/operators';
+import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { Network } from '@capacitor/network';
 
 @Injectable({
@@ -19,14 +19,31 @@ export class WeatherService implements OnDestroy {
 
   constructor(private http: HttpClient, private storage: Storage) {this.initStorage(); }
 
-  async initialize(){
+  async initialize() {
     try {
-      const { latitude, longitude } = await this.getCurrentLocation();
-      this.getWeatherData(latitude, longitude);
+      // Check if we are online first
+      const isOnline = await this.isOnline();
+
+      if (isOnline) {
+        // Attempt to get the real current location when online
+        const { latitude, longitude } = await this.getCurrentLocation();
+        this.getWeatherData(latitude, longitude);  // Proceed with fetching weather or other data for the current location
+      } else {
+        // If offline, retrieve the cached location from storage
+        const cachedLocation = await this.storage.get('currentLocation');
+        if (cachedLocation) {
+          this.getWeatherData(cachedLocation.latitude, cachedLocation.longitude);
+        } else {
+          // Alert the user that we are offline and there is no cached location
+          alert('You are offline and no cached location is available.');
+        }
+      }
     } catch (error) {
-      alert('Could not retrieve current location.');
+      console.error('Initialization failed: ', error);
     }
   }
+
+
 
   ngOnDestroy() {
     this.loadingSubject.complete();
@@ -37,16 +54,36 @@ export class WeatherService implements OnDestroy {
     await this.storage.create();
   }
 
-  async getCurrentLocation(): Promise<{ latitude: number; longitude: number }> {
+  async getCurrentLocation(): Promise<{ latitude: number; longitude: number, city?: string }> {
     try {
       this.loadingSubject.next(true);
+      const isOnline = await this.isOnline();
+
+      // If offline, fetch the cached current location
+      if (!isOnline) {
+        const cachedLocation = await this.storage.get('currentLocation');
+        if (cachedLocation) {
+          return cachedLocation;
+        } else {
+          alert('You are offline and no cached location is available.');
+          throw new Error('No cached location available while offline.');
+        }
+      }
+
+      // If online, get the real current location using Geolocation
       const coordinates = await Geolocation.getCurrentPosition({
-      timeout: 10000,  // Timeout in milliseconds (Increase this value to wait longer)
-      enableHighAccuracy: true,  // Optional: Try to use the most accurate location
-       });
-      return { latitude: coordinates.coords.latitude, longitude: coordinates.coords.longitude };
+        timeout: 10000,
+        enableHighAccuracy: true,
+      });
+
+      const { latitude, longitude } = coordinates.coords;
+      const cityName = await this.getCityName(latitude, longitude).toPromise();
+      const location = { latitude, longitude, city: cityName };
+      await this.storage.set('currentLocation', location);
+
+      return location;
     } catch (error) {
-      alert('Error getting location:'+ error);
+      alert('Error getting location: ' + error);
       throw error;
     } finally {
       this.loadingSubject.next(false);
@@ -101,9 +138,10 @@ export class WeatherService implements OnDestroy {
   }
 
   getWeatherData(latitude: number, longitude: number): Observable<any> {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}&nocache=${Date.now()}`;
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
+    const cacheKey = `weather_current_${latitude.toFixed(6)}_${longitude.toFixed(6)}`;
 
-    return this.http.get<any>(url).pipe(
+    return this.fetchDataWithCache(url, cacheKey).pipe(
       map(data => {
         if (data?.main) {
           const { sunrise, sunset } = data.sys || {};
@@ -126,6 +164,7 @@ export class WeatherService implements OnDestroy {
       })
     );
   }
+
 
   getWeeklyWeather(latitude: number, longitude: number): Observable<any> {
     const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
