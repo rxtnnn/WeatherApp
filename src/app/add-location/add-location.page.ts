@@ -120,7 +120,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
         this.currentLocation.low = Math.round(result.low);
       }
 
-      await this.storage.set('currentLocation', this.currentLocation);
+      await this.saveToStorage();
     } catch (error) {
       console.warn('Could not update current location:', error);
     }

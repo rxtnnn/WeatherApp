@@ -111,6 +111,7 @@ export class HomePage implements OnInit, OnDestroy {
           }
         }
       } else if (!this.isOnline) {
+        alert('You are offline. Check your connection.');
         this.loadStoredData();
       }
     });
