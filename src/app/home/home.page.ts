@@ -339,7 +339,7 @@ export class HomePage implements OnInit, OnDestroy {
           dailyData[date].push(entry);
         });
 
-        this.rawTemperatureData.weeklyForecast = Object.keys(dailyData).slice(0, 5).map((day) => {
+        this.rawTemperatureData.weeklyForecast = Object.keys(dailyData).slice(0, 7).map((day) => {
           const dayEntries = dailyData[day];
           const maxTemp = Math.max(...dayEntries.map((entry) => entry.main.temp));
           const condition = dayEntries[0].weather[0].main;

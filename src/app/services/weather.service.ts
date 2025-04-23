@@ -12,8 +12,6 @@ import { Network } from '@capacitor/network';
 })
 export class WeatherService implements OnDestroy {
   private apiKey = environment.weatherApiKey;
-  private loadingSubject = new BehaviorSubject<boolean>(false);
-  public loading$ = this.loadingSubject.asObservable();
   private selectedLocationSubject = new BehaviorSubject<{ latitude: number, longitude: number, city?: string } | null>(null);
   public selectedLocation$ = this.selectedLocationSubject.asObservable();
 
@@ -21,20 +19,16 @@ export class WeatherService implements OnDestroy {
 
   async initialize() {
     try {
-      // Check if we are online first
       const isOnline = await this.isOnline();
 
       if (isOnline) {
-        // Attempt to get the real current location when online
         const { latitude, longitude } = await this.getCurrentLocation();
-        this.getWeatherData(latitude, longitude);  // Proceed with fetching weather or other data for the current location
+        this.getWeatherData(latitude, longitude);
       } else {
-        // If offline, retrieve the cached location from storage
         const cachedLocation = await this.storage.get('currentLocation');
         if (cachedLocation) {
           this.getWeatherData(cachedLocation.latitude, cachedLocation.longitude);
         } else {
-          // Alert the user that we are offline and there is no cached location
           alert('You are offline and no cached location is available.');
         }
       }
@@ -43,10 +37,7 @@ export class WeatherService implements OnDestroy {
     }
   }
 
-
-
   ngOnDestroy() {
-    this.loadingSubject.complete();
     this.selectedLocationSubject.complete();
   }
 
@@ -56,10 +47,8 @@ export class WeatherService implements OnDestroy {
 
   async getCurrentLocation(): Promise<{ latitude: number; longitude: number, city?: string }> {
     try {
-      this.loadingSubject.next(true);
       const isOnline = await this.isOnline();
 
-      // If offline, fetch the cached current location
       if (!isOnline) {
         const cachedLocation = await this.storage.get('currentLocation');
         if (cachedLocation) {
@@ -70,7 +59,6 @@ export class WeatherService implements OnDestroy {
         }
       }
 
-      // If online, get the real current location using Geolocation
       const coordinates = await Geolocation.getCurrentPosition({
         timeout: 10000,
         enableHighAccuracy: true,
@@ -85,8 +73,6 @@ export class WeatherService implements OnDestroy {
     } catch (error) {
       alert('Error getting location: ' + error);
       throw error;
-    } finally {
-      this.loadingSubject.next(false);
     }
   }
 
@@ -113,7 +99,6 @@ export class WeatherService implements OnDestroy {
   private fetchDataWithCache(endpoint: string, cacheKey: string, maxAge = 10 * 60 * 1000): Observable<any> {
     return from(this.isOnline()).pipe(
       switchMap(isOnline => {
-        // Return cached data when offline
         if (!isOnline) {
           return from(this.storage.get(cacheKey)).pipe(
             map(cachedData => {
@@ -124,7 +109,6 @@ export class WeatherService implements OnDestroy {
             })
           );
         } else {
-          // Fetch from API when online
           return this.http.get<any>(endpoint).pipe(
             tap(data => this.storage.set(cacheKey, { data, timestamp: Date.now() })),
             catchError(error => {
@@ -164,7 +148,6 @@ export class WeatherService implements OnDestroy {
       })
     );
   }
-
 
   getWeeklyWeather(latitude: number, longitude: number): Observable<any> {
     const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${this.apiKey}`;
