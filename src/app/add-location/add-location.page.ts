@@ -239,7 +239,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
           }
         },
         error: (err) => {
-          console.error('Search error:', err);
+          alert('Search error:'+err);
           this.errorMessage = 'Error searching for locations';
         }
       });
@@ -314,7 +314,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
           }
         },
         error: (err) => {
-          console.error('Failed to get weather data:', err);
+          alert('Failed to get weather data:'+ err);
           this.errorMessage = 'Could not fetch weather data';
         }
       });
@@ -364,13 +364,13 @@ export class AddLocationPage implements OnInit, OnDestroy {
                   location.low = Math.round(forecast.low);
                 }
               } catch (forecastErr) {
-                console.warn(`Failed to get forecast for ${location.name}:`, forecastErr);
+                alert(`Failed to get forecast for ${location.name}:`+ forecastErr);
               }
 
               this.updateLocationTemperatureDisplay(location);
             }
           } catch (err) {
-            console.warn(`Failed to refresh data for ${location.name}:`, err);
+            alert(`Failed to refresh data for ${location.name}:`+ err);
           }
         });
 
@@ -385,7 +385,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
       this.updateTemperatureDisplay();
       await this.saveToStorage();
     } catch (err) {
-      console.error('Error during refresh:', err);
+      alert('Error during refresh:'+ err);
     } finally {
       this.isLoading = false;
     }

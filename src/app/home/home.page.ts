@@ -135,7 +135,7 @@ export class HomePage implements OnInit, OnDestroy {
           await this.storage.set('locationCity', this.locationCity);
         },
         (error) => {
-          console.log('Error fetching city name: ', error);
+          alert('Error fetching city name: '+ error);
           this.locationCity = 'Location unavailable';
         }
       );
@@ -160,7 +160,7 @@ export class HomePage implements OnInit, OnDestroy {
           this.lowTemperature = this.settingsService.formatTemperature(result.low, this.temperatureUnit);
         },
         error: (err) => {
-          console.error('Failed to fetch high/low temperatures:', err);
+          alert('Failed to fetch high/low temperatures:' + err);
         }
       });
 

@@ -112,7 +112,7 @@ export class WeatherService implements OnDestroy {
           return this.http.get<any>(endpoint).pipe(
             tap(data => this.storage.set(cacheKey, { data, timestamp: Date.now() })),
             catchError(error => {
-              console.log('Error fetching data:', error);
+              alert('Error fetching data:'+ error);
               return throwError(() => new Error('Failed to fetch data.'));
             })
           );
@@ -143,7 +143,7 @@ export class WeatherService implements OnDestroy {
         return data;
       }),
       catchError(error => {
-        console.error('Error fetching weather data: ', error);
+        alert('Error fetching weather data: '+ error);
         return throwError(() => new Error('Failed to fetch weather data.'));
       })
     );
