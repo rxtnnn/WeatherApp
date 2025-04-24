@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../environments/environment.prod';
+import { environment } from '../../environments/environment';
 import { Storage } from '@ionic/storage-angular';
 import { Observable, BehaviorSubject, throwError, from } from 'rxjs';
 import { catchError, tap, map, switchMap } from 'rxjs/operators';

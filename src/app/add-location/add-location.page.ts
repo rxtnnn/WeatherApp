@@ -1,9 +1,10 @@
+// Fixed AddLocationPage implementation
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { WeatherService } from '../services/weather.service';
 import { Subject, Subscription } from 'rxjs';
-import { take, takeUntil } from 'rxjs/operators';
+import { take, takeUntil, finalize } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { IonItemSliding } from '@ionic/angular';
 import { SettingsService } from '../services/settings.service';
@@ -43,6 +44,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
   selectionMode = false;
   isOnline: boolean = true;
   isDarkMode?: boolean;
+  isLoading: boolean = false;
   private destroy$ = new Subject<void>();
   private weatherApiKey = environment.weatherApiKey;
   private settingsSubscription?: Subscription;
@@ -53,21 +55,28 @@ export class AddLocationPage implements OnInit, OnDestroy {
     private router: Router,
     private settingsService: SettingsService,
     private storage: Storage
-  ) {
-    this.initStorage();
-  }
-
-  async initStorage() {
-    await this.storage.create();
-  }
+  ) {}
 
   async ngOnInit() {
-    await this.weatherService.initialize();
-    await this.initStorage();
-    this.isOnline = (await Network.getStatus()).connected;
-    await this.loadFromStorage();
-    this.refreshLocations();
+    // Initialize storage first
+    await this.storage.create();
 
+    // Check online status
+    this.isOnline = (await Network.getStatus()).connected;
+
+    // Load data from storage first to show something while fetching fresh data
+    await this.loadFromStorage();
+
+    // Initialize weather service
+    await this.weatherService.initialize();
+
+    // Get current location and refresh data
+    if (this.isOnline) {
+      await this.getCurrentLocation();
+      this.refreshLocations();
+    }
+
+    // Subscribe to settings changes
     this.settingsSubscription = this.settingsService.settings$.subscribe(settings => {
       this.isDarkMode = settings.darkMode;
       document.body.setAttribute('color-theme', settings.darkMode ? 'dark' : 'light');
@@ -75,6 +84,7 @@ export class AddLocationPage implements OnInit, OnDestroy {
       this.updateTemperatureDisplay();
     });
 
+    // Handle network status changes
     Network.addListener('networkStatusChange', async (status) => {
       const wasOnline = this.isOnline;
       this.isOnline = status.connected;
@@ -97,181 +107,329 @@ export class AddLocationPage implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.settingsSubscription) {
+      this.settingsSubscription.unsubscribe();
+    }
+    // Remove network listener
+    Network.removeAllListeners();
   }
 
   async getCurrentLocation() {
+    if (!this.isOnline) {
+      console.log('Offline: Cannot get current location');
+      return;
+    }
+
+    this.isLoading = true;
+
     try {
       const { latitude, longitude } = await this.weatherService.getCurrentLocation();
-      const cityData = await this.weatherService.getCityName(latitude, longitude).toPromise();
-      const weatherData = await this.weatherService.getWeatherData(latitude, longitude).toPromise();
 
-      this.currentLocation = { // Update UI immediately
-        name: cityData.address.city || 'Unknown',
+      // Get city name first
+      const cityData = await this.weatherService.getCityName(latitude, longitude).toPromise();
+
+      // Update currentLocation with basic info first
+      this.currentLocation = {
+        name: cityData.address.city || cityData.address.town || cityData.address.village || 'Unknown',
         country: cityData.address.country || '',
         lat: latitude,
         lon: longitude,
         isCurrentLocation: true,
-        temp: Math.round(weatherData.main.temp),
       };
 
-      const result = await this.weatherService.getHighLowTemperature(latitude, longitude).toPromise();
-      if (result) {
-        this.currentLocation.high = Math.round(result.high);
-        this.currentLocation.low = Math.round(result.low);
+      // Then fetch weather data
+      const weatherData = await this.weatherService.getWeatherData(latitude, longitude).toPromise();
+      if (weatherData && weatherData.main) {
+        this.currentLocation.temp = Math.round(weatherData.main.temp);
       }
 
+      // Get high/low temperature
+      try {
+        const result = await this.weatherService.getHighLowTemperature(latitude, longitude).toPromise();
+        if (result) {
+          this.currentLocation.high = Math.round(result.high);
+          this.currentLocation.low = Math.round(result.low);
+        }
+      } catch (forecastError) {
+        console.warn('Could not get forecast data:', forecastError);
+      }
+
+      // Format temperatures and save
+      this.updateLocationTemperatureDisplay(this.currentLocation);
       await this.saveToStorage();
     } catch (error) {
       console.warn('Could not update current location:', error);
+      alert('Could not access current location. Please check your location permissions.');
+    } finally {
+      this.isLoading = false;
     }
   }
 
   searchLocation(event: Event) {
     const target = event.target as HTMLIonSearchbarElement;
-    const query = target.value?.toLowerCase() || '';
+    const query = target.value?.toLowerCase().trim() || '';
 
     this.searchedLocation = null;
     this.filteredLocations = [];
     this.showingSearchResults = false;
     this.errorMessage = '';
-    let matchFound = false;
 
     if (!query || query.length < 2) return;
+
+    if (!this.isOnline) {
+      this.errorMessage = 'Cannot search while offline';
+      this.showingSearchResults = true;
+      return;
+    }
+
     this.showingSearchResults = true;
+    this.isLoading = true;
 
-    if (this.currentLocation && this.currentLocation.name.toLowerCase().includes(query)) {
+    // Check if query matches current location
+    if (this.currentLocation && this.currentLocation.name &&
+        this.currentLocation.name.toLowerCase().includes(query)) {
       this.filteredLocations.push({ ...this.currentLocation, isExisting: true });
-      matchFound = true;
     }
 
-    const matchingSavedLocations = this.savedLocations.filter((loc) => loc.name.toLowerCase().includes(query));
+    // Check if query matches saved locations
+    const matchingSavedLocations = this.savedLocations.filter(
+      (loc) => loc.name.toLowerCase().includes(query)
+    );
+
     if (matchingSavedLocations.length > 0) {
-      this.filteredLocations.push(...matchingSavedLocations.map((loc) => ({ ...loc, isExisting: true })));
-      matchFound = true;
+      this.filteredLocations.push(
+        ...matchingSavedLocations.map((loc) => ({ ...loc, isExisting: true }))
+      );
     }
 
-    if (!matchFound) {
-      const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${this.weatherApiKey}`;
-      this.http.get<any[]>(url).pipe(takeUntil(this.destroy$)).subscribe({
+    // If we have local matches, we don't need to search online
+    if (this.filteredLocations.length > 0) {
+      this.isLoading = false;
+      return;
+    }
+
+    // Search for new locations online
+    const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${this.weatherApiKey}`;
+
+    this.http.get<any[]>(url)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isLoading = false)
+      )
+      .subscribe({
         next: (data) => {
           if (data && data.length > 0) {
-            const newLocation = { name: data[0].name, country: data[0].country, lat: data[0].lat, lon: data[0].lon };
-            if (!this.locationExists(newLocation)) {
-              this.searchedLocation = newLocation;
+            // Filter out any locations that already exist in saved locations
+            const newLocations = data
+              .map(item => ({
+                name: item.name,
+                country: item.country,
+                lat: item.lat,
+                lon: item.lon
+              }))
+              .filter(newLoc => !this.locationExists(newLoc));
+
+            if (newLocations.length > 0) {
+              this.searchedLocation = newLocations[0];
+            } else {
+              this.errorMessage = 'Location already saved';
             }
           } else {
             this.errorMessage = 'No locations found';
           }
         },
-        error: () => {
+        error: (err) => {
+          console.error('Search error:', err);
           this.errorMessage = 'Error searching for locations';
-        },
+        }
       });
+  }
+
+  private updateLocationTemperatureDisplay(location: Location) {
+    const unit = this.settingsService.getTemperatureUnit();
+    if (location.temp !== undefined) {
+      location.formattedTemp = this.settingsService.formatTemperature(location.temp, unit);
     }
+    if (location.high !== undefined) {
+      location.formattedHigh = this.settingsService.formatTemperature(location.high, unit);
+    }
+    if (location.low !== undefined) {
+      location.formattedLow = this.settingsService.formatTemperature(location.low, unit);
+    }
+    return location;
   }
 
   private fetchWeatherData(location: Location) {
+    if (!this.isOnline) {
+      console.log('Cannot fetch weather data while offline');
+      return;
+    }
+
+    this.isLoading = true;
+
     this.weatherService.getWeatherData(location.lat, location.lon)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isLoading = false)
+      )
       .subscribe({
         next: async (currentData) => {
           if (currentData?.main) {
             location.temp = Math.round(currentData.main.temp);
-            this.weatherService.getHighLowTemperature(location.lat, location.lon).pipe(take(1)).subscribe({
-              next: (result: { high: number; low: number }) => {
-                location.high = Math.round(result.high);
-                location.low = Math.round(result.low);
 
-                const unit = this.settingsService.getTemperatureUnit();
-                location.formattedTemp = this.settingsService.formatTemperature(location.temp!, unit);
-                location.formattedHigh = this.settingsService.formatTemperature(location.high, unit);
-                location.formattedLow = this.settingsService.formatTemperature(location.low, unit);
+            this.weatherService.getHighLowTemperature(location.lat, location.lon)
+              .pipe(take(1))
+              .subscribe({
+                next: (result: { high: number; low: number }) => {
+                  location.high = Math.round(result.high);
+                  location.low = Math.round(result.low);
 
-                if (location.isCurrentLocation) {
-                  this.currentLocation = { ...location };
-                } else {
-                  this.savedLocations = [...this.savedLocations, location];
-                  this.saveToStorage();
+                  this.updateLocationTemperatureDisplay(location);
+
+                  if (location.isCurrentLocation) {
+                    this.currentLocation = { ...location };
+                  } else {
+                    // Add to savedLocations if not already there
+                    if (!this.savedLocations.some(loc =>
+                        loc.lat === location.lat &&
+                        loc.lon === location.lon)) {
+                      this.savedLocations = [...this.savedLocations, location];
+                    }
+                    this.saveToStorage();
+                  }
+                },
+                error: (err) => {
+                  console.error('Failed to get high/low temperature:', err);
+                  this.errorMessage = 'Could not fetch forecast data for temperature.';
+
+                  // Add location anyway with just current temp
+                  this.updateLocationTemperatureDisplay(location);
+
+                  if (!location.isCurrentLocation) {
+                    this.savedLocations = [...this.savedLocations, location];
+                    this.saveToStorage();
+                  }
                 }
-                this.updateTemperatureDisplay();
-              },
-              error: () => {
-                this.errorMessage = 'Could not fetch forecast data for temperature.';
-              }
-            });
+              });
           }
         },
-        error: () => {
+        error: (err) => {
+          console.error('Failed to get weather data:', err);
           this.errorMessage = 'Could not fetch weather data';
         }
       });
   }
 
   openLocationDetails(location: Location) {
-    this.weatherService.getWeatherData(location.lat, location.lon)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-       next: () => {
-        this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
-        this.router.navigateByUrl('/home');
-      },
-        error: () => {
-        this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
-        this.router.navigateByUrl('/home');
-      }
-    });
+    if (this.isLoading) return;
+
+    this.isLoading = true;
+
+    this.weatherService.setSelectedLocation(location.lat, location.lon, location.name);
+    this.router.navigateByUrl('/home');
+
+    // Reset loading state after navigation timeout
+    setTimeout(() => {
+      this.isLoading = false;
+    }, 500);
   }
 
   async refreshLocations() {
-    if (this.savedLocations.length === 0) return;
+    if (!this.isOnline) {
+      alert('Cannot refresh while offline');
+      return;
+    }
 
-    this.savedLocations.forEach(location => {
-      this.weatherService.getWeatherData(location.lat, location.lon)
-        .pipe(take(1))
-        .subscribe({
-          next: async (currentData) => {
-            if (currentData?.main) {
-              location.temp = Math.round(currentData.main.temp);
-              this.weatherService.getWeeklyWeather(location.lat, location.lon)
-                .pipe(take(1))
-                .subscribe({
-                  next: async (forecastData: any) => {
-                    if (forecastData && forecastData.list) {
-                      const temps = forecastData.list.map((entry: any) => entry.main.temp);
-                      location.high = Math.round(Math.max(...temps));
-                      location.low = Math.round(Math.min(...temps));
-                    }
-                    await this.saveToStorage();
-                    this.updateTemperatureDisplay();
-                  },
-                  error: () => alert(`Failed to refresh forecast for ${location.name}`)
-                });
+    this.isLoading = true;
+
+    try {
+      // Process saved locations
+      if (this.savedLocations.length > 0) {
+        const promises = this.savedLocations.map(async (location) => {
+          try {
+            const weatherData = await this.weatherService.getWeatherData(location.lat, location.lon)
+              .pipe(take(1))
+              .toPromise();
+
+            if (weatherData?.main) {
+              location.temp = Math.round(weatherData.main.temp);
+
+              try {
+                const forecast = await this.weatherService.getHighLowTemperature(location.lat, location.lon)
+                  .pipe(take(1))
+                  .toPromise();
+
+                if (forecast) {
+                  location.high = Math.round(forecast.high);
+                  location.low = Math.round(forecast.low);
+                }
+              } catch (forecastErr) {
+                console.warn(`Failed to get forecast for ${location.name}:`, forecastErr);
+              }
+
+              this.updateLocationTemperatureDisplay(location);
             }
-          },
-          error: () => alert(`Failed to refresh current weather for ${location.name}`)
+          } catch (err) {
+            console.warn(`Failed to refresh data for ${location.name}:`, err);
+          }
         });
-    });
-    await this.getCurrentLocation();
-    this.updateTemperatureDisplay();
+
+        await Promise.all(promises);
+      }
+
+      // Update current location if it exists
+      if (this.currentLocation?.lat && this.currentLocation?.lon) {
+        await this.getCurrentLocation();
+      }
+
+      this.updateTemperatureDisplay();
+      await this.saveToStorage();
+    } catch (err) {
+      console.error('Error during refresh:', err);
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   addLocation() {
-    if (!this.searchedLocation || this.locationExists(this.searchedLocation)) {
+    if (!this.searchedLocation) {
       return;
     }
-    this.searchedLocation.formattedTemp = '';
-    this.searchedLocation.formattedHigh = '';
-    this.searchedLocation.formattedLow = '';
-    this.fetchWeatherData(this.searchedLocation);
-    this.saveToStorage();
+
+    if (this.locationExists(this.searchedLocation)) {
+      this.errorMessage = 'Location already exists';
+      return;
+    }
+
+    const newLocation: Location = {
+      ...this.searchedLocation,
+      formattedTemp: '',
+      formattedHigh: '',
+      formattedLow: ''
+    };
+
+    this.fetchWeatherData(newLocation);
     this.clearSearch();
   }
 
   private locationExists(location: Location): boolean {
-    return this.savedLocations.some(saved =>
+    // Check if location exists in saved locations
+    const existsInSaved = this.savedLocations.some(saved =>
       saved.name.toLowerCase() === location.name.toLowerCase() &&
-      saved.country.toLowerCase() === location.country.toLowerCase()
+      saved.country.toLowerCase() === location.country.toLowerCase() &&
+      Math.abs(saved.lat - location.lat) < 0.01 &&
+      Math.abs(saved.lon - location.lon) < 0.01
     );
+
+    // Check if it's the current location
+    const isCurrentLocation =
+      this.currentLocation &&
+      this.currentLocation.name.toLowerCase() === location.name.toLowerCase() &&
+      this.currentLocation.country.toLowerCase() === location.country.toLowerCase() &&
+      Math.abs(this.currentLocation.lat - location.lat) < 0.01 &&
+      Math.abs(this.currentLocation.lon - location.lon) < 0.01;
+
+    return existsInSaved || isCurrentLocation;
   }
 
   clearSearch() {
@@ -279,49 +437,54 @@ export class AddLocationPage implements OnInit, OnDestroy {
     this.searchedLocation = null;
     this.filteredLocations = [];
     this.showingSearchResults = false;
+    this.errorMessage = '';
   }
 
   async saveToStorage() {
-   await this.storage.set('savedLocations', this.savedLocations);
-  await this.storage.set('currentLocation', this.currentLocation);
+    await Promise.all([
+      this.storage.set('savedLocations', this.savedLocations),
+      this.storage.set('currentLocation', this.currentLocation)
+    ]);
   }
 
   async loadFromStorage() {
-    const storedCurrentLocation = await this.storage.get('currentLocation');
-    if (storedCurrentLocation) {
-      this.currentLocation = storedCurrentLocation;
-    }
+    try {
+      const storedCurrentLocation = await this.storage.get('currentLocation');
+      if (storedCurrentLocation) {
+        this.currentLocation = storedCurrentLocation;
+      }
 
-    const storedSavedLocations = await this.storage.get('savedLocations');
-    if (storedSavedLocations) {
-      this.savedLocations = storedSavedLocations;
+      const storedSavedLocations = await this.storage.get('savedLocations');
+      if (storedSavedLocations && Array.isArray(storedSavedLocations)) {
+        this.savedLocations = storedSavedLocations;
+      }
+
+      this.updateTemperatureDisplay();
+    } catch (err) {
+      console.error('Error loading from storage:', err);
     }
-    this.updateTemperatureDisplay();
   }
 
   deleteLocation(index: number, slidingItem: IonItemSliding) {
     slidingItem.close();
-    this.savedLocations.splice(index, 1);
-    this.saveToStorage();
-  }
 
-  formatTemp(temp: number | undefined): string {
-    return temp !== undefined ? this.settingsService.formatTemperature(temp, 'celsius') : 'N/A';
+    if (index >= 0 && index < this.savedLocations.length) {
+      this.savedLocations.splice(index, 1);
+      this.saveToStorage();
+    }
   }
 
   updateTemperatureDisplay() {
     const unit = this.settingsService.getTemperatureUnit();
-    this.settingsService.setTemperatureUnit(unit); // Ensure it's correctly set
 
-    const formatTemp = (temp?: number) =>
-      temp !== undefined ? this.settingsService.formatTemperature(temp, unit) : undefined;
+    // Update current location
+    if (this.currentLocation) {
+      this.updateLocationTemperatureDisplay(this.currentLocation);
+    }
 
-    const allLocations = [...this.savedLocations, this.currentLocation];
-
-    allLocations.forEach(location => {
-      location.formattedTemp = formatTemp(location.temp);
-      location.formattedHigh = formatTemp(location.high);
-      location.formattedLow = formatTemp(location.low);
+    // Update saved locations
+    this.savedLocations.forEach(location => {
+      this.updateLocationTemperatureDisplay(location);
     });
   }
 }
